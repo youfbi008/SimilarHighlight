@@ -33,6 +33,12 @@ namespace OutputTextSeletion
         public void WlSelect(string selectType)
         {
             Debug.WriteLine(selectType);
+
+            // for test 
+            // Console.WriteLine("abcde");
+            // DoSomething();
+            // Debug.WriteLine("hijkl");
+
             // (Console)(\\s*)(\\.)(\\s*)(WriteLine)(\\s*)(\\()(\\s*)(\")
             const string startPattenText = "(\\.)(\\s*)(WriteLine)(\\s*)(\\()(\\s*)(\")"; // (Console)(\s*)(\.)(\s*)(WriteLine)(\s*)(\()(\s*)(\")
 

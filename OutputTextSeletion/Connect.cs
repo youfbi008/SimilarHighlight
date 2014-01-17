@@ -15,7 +15,6 @@ namespace OutputTextSeletion
 	public class Connect : IDTExtensibility2, IDTCommandTarget
 	{
 
-        private CommandBarPopup toolsPopup;
         private Command _fwdSelCommand;
         private Command _bwdSelCommand;
 

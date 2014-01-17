@@ -112,8 +112,8 @@
     </COMReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="C:\Users\yujiang.yang\Documents\Visual Studio 2012\Addins\OutputTextSeletion - For Testing.AddIn">
-      <Link>OutputTextSeletion - For Testing.AddIn</Link>
+    <Content Include="C:\Users\yujiang.yang\Documents\Visual Studio 2012\Addins\OutputTextSeletionForDoc.AddIn">
+      <Link>OutputTextSeletionForDoc.AddIn</Link>
     </Content>
     <Content Include="OutputTextSeletion.AddIn" />
   </ItemGroup>
