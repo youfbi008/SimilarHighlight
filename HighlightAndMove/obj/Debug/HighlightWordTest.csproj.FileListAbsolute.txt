@@ -1,0 +1,8 @@
+D:\vswork\HighlightWordTest\HighlightWordTest\bin\Debug\HighlightWordTest.dll
+D:\vswork\HighlightWordTest\HighlightWordTest\bin\Debug\HighlightWordTest.pdb
+D:\vswork\HighlightWordTest\HighlightWordTest\bin\Debug\HighlightWordTest.vsix
+D:\vswork\HighlightWordTest\HighlightWordTest\bin\Debug\extension.vsixmanifest
+D:\vswork\HighlightWordTest\HighlightWordTest\obj\Debug\HighlightWordTest.dll
+D:\vswork\HighlightWordTest\HighlightWordTest\obj\Debug\HighlightWordTest.pdb
+D:\vswork\HighlightWordTest\HighlightWordTest\obj\Debug\extension.vsixmanifest
+D:\vswork\HighlightWordTest\HighlightWordTest\obj\Debug\HighlightWordTest.csprojResolveAssemblyReference.cache

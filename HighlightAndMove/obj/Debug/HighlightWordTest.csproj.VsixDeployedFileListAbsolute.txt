@@ -1,0 +1,3 @@
+C:\Users\yang\AppData\Local\Microsoft\VisualStudio\11.0Exp\Extensions\Microsoft\HighlightWordTest\1.0\\HighlightWordTest.dll
+C:\Users\yang\AppData\Local\Microsoft\VisualStudio\11.0Exp\Extensions\Microsoft\HighlightWordTest\1.0\\extension.vsixmanifest
+C:\Users\yang\AppData\Local\Microsoft\VisualStudio\11.0Exp\Extensions\Microsoft\HighlightWordTest\1.0\\HighlightWordTest.pdb

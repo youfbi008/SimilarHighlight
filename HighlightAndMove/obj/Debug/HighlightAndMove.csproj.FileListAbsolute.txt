@@ -1,0 +1,8 @@
+D:\vswork\HighlightAndMove\HighlightAndMove\bin\Debug\HighlightAndMove.dll
+D:\vswork\HighlightAndMove\HighlightAndMove\bin\Debug\HighlightAndMove.pdb
+D:\vswork\HighlightAndMove\HighlightAndMove\bin\Debug\HighlightAndMove.vsix
+D:\vswork\HighlightAndMove\HighlightAndMove\bin\Debug\extension.vsixmanifest
+D:\vswork\HighlightAndMove\HighlightAndMove\obj\Debug\HighlightAndMove.csprojResolveAssemblyReference.cache
+D:\vswork\HighlightAndMove\HighlightAndMove\obj\Debug\HighlightAndMove.dll
+D:\vswork\HighlightAndMove\HighlightAndMove\obj\Debug\HighlightAndMove.pdb
+D:\vswork\HighlightAndMove\HighlightAndMove\obj\Debug\extension.vsixmanifest
