@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-16" standalone="no"?>
+
+<Extensibility xmlns="http://schemas.microsoft.com/AutomationExtensibility">
+
+	<HostApplication>
+
+		<Name>Microsoft Visual Studio</Name>
+
+		<Version>11.0</Version>
+
+		<Name>Microsoft Visual Studio</Name>
+
+		<Version>10.0</Version>
+
+		<Name>Microsoft Visual Studio</Name>
+
+		<Version>9.0</Version>
+
+	</HostApplication>
+
+	<Addin>
+
+		<FriendlyName>OutputTextSeletion - Select output text of WriteLine</FriendlyName>
+
+		<Description>OutputTextSeletion - Select output text of WriteLine</Description>
+
+		<Assembly>D:\DevelopWorks\OutputTextSeletion\OutputTextSeletion\bin\OutputTextSeletion.dll</Assembly>
+
+		<FullClassName>OutputTextSeletion.Connect</FullClassName>
+
+		<LoadBehavior>5</LoadBehavior>
+
+		<CommandPreload>1</CommandPreload>
+
+		<CommandLineSafe>0</CommandLineSafe>
+
+	</Addin>
+
+</Extensibility>
+

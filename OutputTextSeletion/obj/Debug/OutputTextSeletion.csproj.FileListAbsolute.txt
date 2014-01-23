@@ -1,0 +1,14 @@
+D:\vswork\OutputTextSeletion\OutputTextSeletion\bin\Debug\OutputTextSeletion.dll
+D:\vswork\OutputTextSeletion\OutputTextSeletion\bin\Debug\OutputTextSeletion.pdb
+D:\vswork\OutputTextSeletion\OutputTextSeletion\bin\Debug\OutputTextSeletion.xml
+D:\vswork\OutputTextSeletion\OutputTextSeletion\obj\Debug\OutputTextSeletion.csprojResolveAssemblyReference.cache
+D:\vswork\OutputTextSeletion\OutputTextSeletion\obj\Debug\OutputTextSeletion.csproj.ResolveComReference.cache
+D:\vswork\OutputTextSeletion\OutputTextSeletion\obj\Debug\OutputTextSeletion.dll
+D:\vswork\OutputTextSeletion\OutputTextSeletion\obj\Debug\OutputTextSeletion.pdb
+D:\DevelopWorks\OutputTextSeletion\OutputTextSeletion\bin\Debug\OutputTextSeletion.dll
+D:\DevelopWorks\OutputTextSeletion\OutputTextSeletion\bin\Debug\OutputTextSeletion.pdb
+D:\DevelopWorks\OutputTextSeletion\OutputTextSeletion\bin\Debug\OutputTextSeletion.xml
+D:\DevelopWorks\OutputTextSeletion\OutputTextSeletion\obj\Debug\OutputTextSeletion.csproj.ResolveComReference.cache
+D:\DevelopWorks\OutputTextSeletion\OutputTextSeletion\obj\Debug\OutputTextSeletion.dll
+D:\DevelopWorks\OutputTextSeletion\OutputTextSeletion\obj\Debug\OutputTextSeletion.pdb
+D:\DevelopWorks\OutputTextSeletion\OutputTextSeletion\obj\Debug\OutputTextSeletion.csprojResolveAssemblyReference.cache
