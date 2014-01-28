@@ -19,3 +19,10 @@ When the cursor is moved between the two WriteLine method,
 the string "abcde" and "hijkl" will be highlighted.
 Then you press `Ctrl + Alt + <-`, then the whole text of "abcde" will be selected.
 
+# How to build
+
+1.Build the solution.  
+2.When you run this project in the debugger, a second instance of Visual Studio is instantiated.  
+3.Set "Command line arguments" of the start options to "/rootsuffix Exp".  
+
+Then, just start running.  
