@@ -156,21 +156,25 @@ namespace HighlightAndMove {
 				Processor processor, IEnumerable<LocationInfo> locations, IEnumerable<FileInfo> targets,
 				int range = 5, bool inner = true, bool outer = true) {
 			var path2Ast = new Dictionary<string, XElement>();
-			var xml2 = processor.GenerateXml(new FileInfo(locations.First().FileInfo.FullName));
 			var paths = locations.Select(l => l.FileInfo).Concat(targets)
 					.Select(f => f.FullName)
 					.ToHashSet();
+			// Create ASTs from the give file paths
 			foreach (var path in paths) {
 				path2Ast.Add(path, processor.GenerateXml(new FileInfo(path)));
 			}
 
+			// Convert the location informatoin (CodeRange) to the node (XElement) in the ASTs
 			var elements = new List<XElement>();
 			foreach (var location in locations) {
 				var root = path2Ast[location.FileInfo.FullName];
 				elements.Add(location.CodeRange.FindOutermostElement(root));
 			}
+
+			// Determine the node names to extract candidate nodes from the ASTs
 			var names = AdoptNodeNames(elements);
 
+			// Extract candidate nodes that has one of the determined names
 			var candidates = new Dictionary<string, IEnumerable<XElement>>();
 			foreach (var keyAndValue in path2Ast) {
 				candidates.Add(
@@ -178,22 +182,28 @@ namespace HighlightAndMove {
 						keyAndValue.Value.Descendants()
 								.Where(e => names.Contains(e.Name())));
 			}
+
+			// Extract surrounding nodes from each candidate node
 			var commonKeys = elements.GetCommonKeys(range, true, true);
+
 			return candidates.SelectMany(
 					kv => {
 						var fileInfo = new FileInfo(kv.Key);
 						return kv.Value.Select(
 								e => Tuple.Create(
+										// Count how many common surrounding nodes each candidate node has
 										e.GetSurroundingKeys(range, inner, outer)
 												.Count(commonKeys.Contains),
 										e))
 								.Select(
 										t => Tuple.Create(
-												t.Item1, new LocationInfo {
+												t.Item1,	// Indicates the simlarity
+												new LocationInfo {
 													FileInfo = fileInfo,
 													CodeRange = CodeRange.Locate(t.Item2),
 												}));
 					})
+					// Sort candidate nodes using the similarities
 					.OrderByDescending(t => t.Item1);
 		}
 	}
