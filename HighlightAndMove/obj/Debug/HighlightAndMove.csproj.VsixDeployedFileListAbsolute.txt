@@ -1,3 +1,6 @@
 C:\Users\yang\AppData\Local\Microsoft\VisualStudio\11.0Exp\Extensions\Microsoft\HighlightAndMove\1.0\\HighlightAndMove.dll
 C:\Users\yang\AppData\Local\Microsoft\VisualStudio\11.0Exp\Extensions\Microsoft\HighlightAndMove\1.0\\extension.vsixmanifest
 C:\Users\yang\AppData\Local\Microsoft\VisualStudio\11.0Exp\Extensions\Microsoft\HighlightAndMove\1.0\\HighlightAndMove.pdb
+C:\Users\yujiang.yang\AppData\Local\Microsoft\VisualStudio\11.0Exp\Extensions\Microsoft\HighlightAndMove\1.0\\HighlightAndMove.dll
+C:\Users\yujiang.yang\AppData\Local\Microsoft\VisualStudio\11.0Exp\Extensions\Microsoft\HighlightAndMove\1.0\\extension.vsixmanifest
+C:\Users\yujiang.yang\AppData\Local\Microsoft\VisualStudio\11.0Exp\Extensions\Microsoft\HighlightAndMove\1.0\\HighlightAndMove.pdb

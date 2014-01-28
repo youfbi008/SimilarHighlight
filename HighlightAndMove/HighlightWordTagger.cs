@@ -33,7 +33,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
             this.View = view;
             this.document = document;
-       //     this.View.VisualElement.left.MouseDown += OnLeftMouseButtonDown;
+        //    this.View.VisualElement.PreviewMouseDown +=VisualElement_PreviewMouseDown;
             this.View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
             this.SourceBuffer = sourceBuffer;
             this.TextSearchService = textSearchService;
@@ -46,7 +46,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
         void VisualElement_PreviewKeyUp(object sender, KeyEventArgs e)
         {
-            if (Keyboard.IsKeyDown(Key.LeftCtrl) && Keyboard.IsKeyDown(Key.LeftAlt))
+            if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.LeftAlt))
             {
                 if (e.Key == Key.Left)
                 {
@@ -60,11 +60,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         //    throw new NotImplementedException();
         }
 
-        void OnLeftMouseButtonDown(object sender, RoutedEventArgs e)
+        void VisualElement_PreviewMouseDown(object sender, RoutedEventArgs e)
         {
-            if ((Keyboard.PrimaryDevice.Modifiers & ModifierKeys.Alt) != ModifierKeys.Alt)
-                return;
-
             // Double click
             if ((e as MouseButtonEventArgs).ClickCount == 2)
             {
@@ -190,8 +187,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
             FindData endFindData = new FindData(endPattenText, currentWord.Snapshot);
 
-            startFindData.FindOptions = FindOptions.UseRegularExpressions;
-
+            startFindData.FindOptions = FindOptions.Multiline | FindOptions.UseRegularExpressions;
+            endFindData.FindOptions = FindOptions.Multiline | FindOptions.UseRegularExpressions;
             ICollection<SnapshotSpan> tmpSpanAll = TextSearchService.FindAll(startFindData);
             ICollection<SnapshotSpan> tmpNewSpanAll = new List<SnapshotSpan>();
             foreach (SnapshotSpan tmpSpan in tmpSpanAll)
@@ -222,8 +219,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
         private SnapshotSpan? GetExpectedSpan(SnapshotSpan tmpSpan, FindData findData)
         {
-            const string endPattenText = "(\")(\\s*)(\\))";
-            SnapshotSpan? endSpan = ((ITextSearchService2)TextSearchService).Find(tmpSpan.End, endPattenText, FindOptions.UseRegularExpressions);
+
+            SnapshotSpan? endSpan = ((ITextSearchService2)TextSearchService).Find(tmpSpan.End, findData.SearchString, findData.FindOptions);
 
             if (endSpan == null) {
 
