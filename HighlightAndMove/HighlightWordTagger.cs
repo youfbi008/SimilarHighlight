@@ -57,7 +57,6 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     WlSelect("fwd");
                 }
             }
-        //    throw new NotImplementedException();
         }
 
         void VisualElement_PreviewMouseDown(object sender, RoutedEventArgs e)
