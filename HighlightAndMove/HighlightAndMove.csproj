@@ -39,6 +39,24 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Antlr3.Runtime">
+      <HintPath>..\packages\Antlr.3.5.0.2\lib\Antlr3.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Code2Xml.Core">
+      <HintPath>..\packages\Code2Xml.2.1.0.83\lib\Code2Xml.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Code2Xml.Languages.ANTLRv3">
+      <HintPath>..\packages\Code2Xml.2.1.0.83\lib\Code2Xml.Languages.ANTLRv3.dll</HintPath>
+    </Reference>
+    <Reference Include="Code2Xml.Languages.ExternalProcessors">
+      <HintPath>..\packages\Code2Xml.2.1.0.83\lib\Code2Xml.Languages.ExternalProcessors.dll</HintPath>
+    </Reference>
+    <Reference Include="Code2Xml.Languages.Obsolete">
+      <HintPath>..\packages\Code2Xml.2.1.0.83\lib\Code2Xml.Languages.Obsolete.dll</HintPath>
+    </Reference>
+    <Reference Include="Code2Xml.Objects">
+      <HintPath>..\packages\Code2Xml.2.1.0.83\lib\Code2Xml.Objects.dll</HintPath>
+    </Reference>
     <Reference Include="EnvDTE, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
@@ -69,6 +87,12 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.TextManager.Interop, Version=7.1.40304.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+    <Reference Include="Paraiba">
+      <HintPath>..\packages\Paraiba.1.1.1.91\lib\net40\Paraiba.dll</HintPath>
+    </Reference>
+    <Reference Include="Paraiba.Experiment">
+      <HintPath>..\packages\Paraiba.Experiment.1.1.1.91\lib\net40\Paraiba.Experiment.dll</HintPath>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />
@@ -79,6 +103,10 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="TreeDotNet">
+      <HintPath>..\packages\Code2Xml.2.1.0.83\lib\TreeDotNet.dll</HintPath>
+    </Reference>
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
@@ -86,9 +114,11 @@
     <Compile Include="HighlightWordTag.cs" />
     <Compile Include="HighlightWordTagger.cs" />
     <Compile Include="HighlightWordTaggerProvider.cs" />
+    <Compile Include="Inferrer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="packages.config" />
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>
