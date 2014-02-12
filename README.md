@@ -9,6 +9,10 @@ HighlightAndMove is a simple extension by the Managed Extensibility Framework.
 You can press `Ctrl + Alt + ->` to make the next similar element selected.  
 And, you can press `Ctrl + Alt + <-` to make the the previous similar element selected.
 
+# Requirements
+
+*visual studio 2012 sdk
+
 # How to build
 
 1.Build the solution.  

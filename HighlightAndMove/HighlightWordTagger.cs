@@ -13,6 +13,10 @@ using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Operations;
 using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Utilities;
+using Code2Xml.Core;
+using Code2Xml.Core.Location;
+using System.IO;
+
 
 namespace HighlightAndMove
 {
@@ -27,20 +31,22 @@ namespace HighlightAndMove
         SnapshotPoint RequestedPoint { get; set; }
         EnvDTE.Document document { get; set; }
         object updateLock = new object();
+        List<string> c_tokens = new List<string>();
+        IEnumerable<LocationInfo> locations { get; set; }
 
         public HighlightWordTagger(IWpfTextView view, ITextBuffer sourceBuffer, ITextSearchService textSearchService,
 ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
             this.View = view;
             this.document = document;
-        //    this.View.VisualElement.PreviewMouseDown +=VisualElement_PreviewMouseDown;
+            this.View.VisualElement.PreviewMouseDown +=VisualElement_PreviewMouseDown;
             this.View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
             this.SourceBuffer = sourceBuffer;
             this.TextSearchService = textSearchService;
             this.TextStructureNavigator = textStructureNavigator;
             this.WordSpans = new NormalizedSnapshotSpanCollection();
             this.CurrentWord = null;
-            this.View.Caret.PositionChanged += CaretPositionChanged;
+   //         this.View.Caret.PositionChanged += CaretPositionChanged;
        //     this.View.LayoutChanged += ViewLayoutChanged;
         }
 
@@ -64,7 +70,31 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             // Double click
             if ((e as MouseButtonEventArgs).ClickCount == 2)
             {
-                UpdateAtCaretPosition(View.Caret.Position);
+  //              var fileInfo = new FileInfo();
+           //     CodeRange = CodeRange.Locate(elements.First(e => e.TokenText() == "processor")),
+		//		FileInfo = fileInfo;
+              //  locations.
+         //       var selected = document.ActiveWindow.Selection as TextSelection;
+                CodeRange cur_word = GetCodeRange(View.Caret.Position);
+                FileInfo cur_file = new FileInfo(this.document.FullName);
+
+                if (locations == null) {
+                    locations = new[] {new LocationInfo {
+                        CodeRange = cur_word,
+				        FileInfo = cur_file,
+			        }}; 
+                } else {
+                    locations = locations.Concat(new[] {new LocationInfo {
+                        CodeRange = cur_word,
+				        FileInfo = cur_file,
+			        }});
+
+                    var processor = ProcessorLoader.CSharpUsingAntlr3;
+                    var ret = Inferrer.GetSimilarElements(processor, locations,
+                        new[] { cur_file });
+                }
+      
+             //   UpdateAtCaretPosition(View.Caret.Position);
             }
         }
 
@@ -98,6 +128,30 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         }
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
+
+        CodeRange GetCodeRange(CaretPosition caretPosition)
+        {
+            SnapshotPoint? point = caretPosition.Point.GetPoint(SourceBuffer, caretPosition.Affinity);
+
+            //if (!point.HasValue)
+            //    return null;
+
+            //// If the new caret position is still within the current word (and on the same snapshot), we don't need to check it
+            //if (CurrentWord.HasValue
+            //    && CurrentWord.Value.Snapshot == View.TextSnapshot
+            //    && point.Value >= CurrentWord.Value.Start
+            //    && point.Value <= CurrentWord.Value.End)
+            //{
+            //    return;
+            //}
+            
+            //Find all words in the buffer like the one the caret is on
+            TextExtent word = TextStructureNavigator.GetExtentOfWord(point.Value);
+            var selected = document.ActiveWindow.Selection as TextSelection;
+            CodeLocation p_start = new CodeLocation(selected.TopPoint.Line, word.Span.Start);
+            CodeLocation p_end = new CodeLocation(selected.TopPoint.Line, word.Span.End);
+            return new CodeRange(p_start, p_end);
+        }
 
         void UpdateAtCaretPosition(CaretPosition caretPosition)
         {
@@ -158,21 +212,21 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             }
 
             SnapshotSpan currentWord = word.Span;
-                       
+            c_tokens.Add(currentWord.GetText());   
 
-            if (currentWord.GetText().IndexOf("WriteLine") < 0)
-            {
-                //SnapshotSpan preSpan = TextStructureNavigator.GetSpanOfPreviousSibling(currentWord);
-                //SnapshotSpan nextSpan = TextStructureNavigator.GetSpanOfNextSibling(currentWord);
+            //if (currentWord.GetText().IndexOf("WriteLine") < 0)
+            //{
+            //    //SnapshotSpan preSpan = TextStructureNavigator.GetSpanOfPreviousSibling(currentWord);
+            //    //SnapshotSpan nextSpan = TextStructureNavigator.GetSpanOfNextSibling(currentWord);
 
-                //string adjText = preSpan.GetText() + nextSpan.GetText();
+            //    //string adjText = preSpan.GetText() + nextSpan.GetText();
 
-                return;
-            }
+            //    return;
+            //}
 
             //If this is the current word, and the caret moved within a word, we're done.
-            if (CurrentWord.HasValue && currentWord == CurrentWord)
-                return;
+            //if (CurrentWord.HasValue && currentWord == CurrentWord)
+            //    return;
 
 
             //Find the new spans

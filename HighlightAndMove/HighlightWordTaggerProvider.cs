@@ -57,7 +57,7 @@ namespace HighlightAndMove
                 Trace.WriteLine("did not get dte reference");
             else
             {
-
+                
                 foreach (var item in dte2.Documents)
                 {
                     var doc = item as EnvDTE.Document;

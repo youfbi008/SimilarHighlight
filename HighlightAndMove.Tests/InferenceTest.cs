@@ -37,7 +37,7 @@ namespace HighlightAndMove.Tests
 				FileInfo = fileInfo,
 			};
 			var fileInfoIdentifier = new LocationInfo {
-				CodeRange = CodeRange.Locate(elements.First(e => e.TokenText() == "fileInfo")),
+                CodeRange = CodeRange.Locate(elements.First(e => e.TokenText() == "fileInfo")),
 				FileInfo = fileInfo,
 			};
 
@@ -50,9 +50,11 @@ namespace HighlightAndMove.Tests
 				var score = tuple.Item1;
 				var location = tuple.Item2;
 				var startAndEnd = location.CodeRange.ConvertToIndicies(code);
-				var fragment = code.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1);
+                var fragment = code.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1);
 				Console.WriteLine("Similarity: " + score + ", code: " + fragment);
 			}
+
+           
 		}
     }
 }
