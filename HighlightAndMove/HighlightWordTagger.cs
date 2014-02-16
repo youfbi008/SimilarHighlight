@@ -16,6 +16,9 @@ using Microsoft.VisualStudio.Utilities;
 using Code2Xml.Core;
 using Code2Xml.Core.Location;
 using System.IO;
+using System.Diagnostics;
+using System.Xml.Linq;
+using System.Xml;
 
 
 namespace HighlightAndMove
@@ -31,15 +34,35 @@ namespace HighlightAndMove
         SnapshotPoint RequestedPoint { get; set; }
         EnvDTE.Document document { get; set; }
         object updateLock = new object();
-        List<string> c_tokens = new List<string>();
+
+        // location datas 
         IEnumerable<LocationInfo> locations { get; set; }
+        // the source code of current file
+        string source_code { get; set; }
+        // the max similarity of the similar Elements
+        int Max_similarity { get; set; }
+        // the collecton of highlighted elements
+        ICollection<SnapshotSpan> newSpanAll { get; set; }        
+        CodeRange cur_word { get; set; }
+        // Count the number of left mouse button clicks
+        int cntLeftClick { get; set; }
+        // current selection
+        TextSelection RequestSelection { get; set; }
+        // the order number of current selection in highlighted elements
+        int CurrentSelectNum { get; set; }
+        // the position data collecton of highlighted elements
+        ICollection<Tuple<int, int>> newSelectionAll { get; set; }
+
 
         public HighlightWordTagger(IWpfTextView view, ITextBuffer sourceBuffer, ITextSearchService textSearchService,
 ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
+            this.cntLeftClick = 0;
+            this.Max_similarity = 0;
             this.View = view;
             this.document = document;
-            this.View.VisualElement.PreviewMouseDown +=VisualElement_PreviewMouseDown;
+            this.View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;
+            this.View.VisualElement.PreviewMouseDown += VisualElement_PreviewMouseDown;
             this.View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
             this.SourceBuffer = sourceBuffer;
             this.TextSearchService = textSearchService;
@@ -50,17 +73,128 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
        //     this.View.LayoutChanged += ViewLayoutChanged;
         }
 
+        // TODO 1. the selection by pressing keys.
+        // TODO 2. If we've selected something not worth highlighting, we might have missed a "word" 
+        void VisualElement_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+
+            if (cntLeftClick == 2)
+            {
+                cntLeftClick = 0;
+                RequestSelection = this.document.Selection;
+            }
+            else
+            {
+                RequestSelection = this.document.Selection;
+            }
+
+            if (RequestSelection.Text != "" )
+            {
+                TextSelection CurrentSelection = RequestSelection;;
+                FileInfo cur_file = new FileInfo(this.document.FullName);
+                source_code = File.ReadAllText(this.document.FullName);
+                var processor = new Code2Xml.Languages.ANTLRv3.Processors.CSharp.CSharpProcessorUsingAntlr3();
+                var xml = processor.GenerateXml(cur_file);
+                
+                //IEnumerable<XElement> tests =
+                //    from item in xml.Element("TOKEN")
+                //    where (string)item == RequestSelection.Text
+                //    select item;
+                //foreach (XElement el in tests) { 
+                    
+                //}
+                //    Console.WriteLine((string)el.Attribute("TestId"));
+
+                List<SnapshotSpan> wordSpans = new List<SnapshotSpan>();
+                GetCodeRangeBySelection(RequestSelection);
+
+                SnapshotPoint tmpStart = new SnapshotPoint(this.View.TextSnapshot, ConvertToPosition(RequestSelection.TopPoint));
+                SnapshotPoint tmpEnd = new SnapshotPoint(this.View.TextSnapshot, ConvertToPosition(RequestSelection.BottomPoint));
+
+                SnapshotSpan currentWord = new SnapshotSpan(tmpStart, tmpEnd);
+                
+                //If we couldn't find a word, clear out the existing markers
+                if (cur_word == null)
+                {
+                    return;
+                }
+
+                // It will compare two elements by default.
+                if (locations == null || locations.Count<LocationInfo>() == 2)
+                {
+                    locations = new[] {new LocationInfo {
+                        CodeRange = cur_word,
+				        FileInfo = cur_file,
+			        }};
+                }
+                else
+                {
+                    locations = locations.Concat(new[] {new LocationInfo {
+                        CodeRange = cur_word,
+				        FileInfo = cur_file,
+			        }});
+
+                    var ret = Inferrer.GetSimilarElements(processor, locations,
+                        new[] { cur_file });
+
+                    newSpanAll = new List<SnapshotSpan>();
+                    newSelectionAll = new List<Tuple<int, int>>();
+                    Max_similarity = 0;
+                    WordSpans = null;
+                    CurrentSelectNum = 0;
+
+                    foreach (var tuple in ret.Take(10))
+                    {
+                        // if the similarity is 0
+                       if (tuple.Item1 == 0) {
+                            break;
+                        }
+
+                        // if the similarity is less than the max similarity, it will be stopped
+                        if (HightlightSimilarElements(tuple) < 0) {
+                            break;
+                        }
+
+                        var score = tuple.Item1;
+                        var location = tuple.Item2;                        
+                        var startAndEnd = location.CodeRange.ConvertToIndicies(source_code);
+                        var fragment = source_code.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1);
+                        Debug.WriteLine("Similarity: " + score + ", code: " + fragment);
+                        Console.WriteLine("Similarity: " + score + ", code: " + fragment);
+                    }
+
+
+                    if (newSpanAll.Count == 0) {
+                        return;
+                    }
+
+                    wordSpans.AddRange(newSpanAll);
+                    newSelectionAll.OrderBy(sel => sel.Item1);
+
+                    // get the order number of current selection in the highlighted elements
+                    CurrentSelectNum = newSelectionAll.Select( (item, index) => new {Item = item, Index = index})
+                        .First(sel => sel.Item.Item1 == RequestSelection.TopPoint.AbsoluteCharOffset).Index;                    
+                  
+                    //If another change hasn't happened, do a real update
+                    if (CurrentSelection == RequestSelection)
+                        SynchronousUpdate(CurrentSelection, new NormalizedSnapshotSpanCollection(wordSpans), currentWord);
+                }
+            }
+        }
+
         void VisualElement_PreviewKeyUp(object sender, KeyEventArgs e)
         {
             if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.LeftAlt))
             {
                 if (e.Key == Key.Left)
                 {
-                    WlSelect("bwd");
+                    // go to the previous highlighted element
+                    MoveSelection("bwd");
                 }
                 else if (e.Key == Key.Right)
                 {
-                    WlSelect("fwd");
+                    // go to the next highlighted element
+                    MoveSelection("fwd");
                 }
             }
         }
@@ -68,49 +202,26 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         void VisualElement_PreviewMouseDown(object sender, RoutedEventArgs e)
         {
             // Double click
-            if ((e as MouseButtonEventArgs).ClickCount == 2)
+            if ((e as MouseButtonEventArgs).ClickCount == 2 && (e as MouseButtonEventArgs).LeftButton == MouseButtonState.Pressed)
             {
-  //              var fileInfo = new FileInfo();
-           //     CodeRange = CodeRange.Locate(elements.First(e => e.TokenText() == "processor")),
-		//		FileInfo = fileInfo;
-              //  locations.
-         //       var selected = document.ActiveWindow.Selection as TextSelection;
-                CodeRange cur_word = GetCodeRange(View.Caret.Position);
-                FileInfo cur_file = new FileInfo(this.document.FullName);
-
-                if (locations == null) {
-                    locations = new[] {new LocationInfo {
-                        CodeRange = cur_word,
-				        FileInfo = cur_file,
-			        }}; 
-                } else {
-                    locations = locations.Concat(new[] {new LocationInfo {
-                        CodeRange = cur_word,
-				        FileInfo = cur_file,
-			        }});
-
-                    var processor = ProcessorLoader.CSharpUsingAntlr3;
-                    var ret = Inferrer.GetSimilarElements(processor, locations,
-                        new[] { cur_file });
-                }
-      
-             //   UpdateAtCaretPosition(View.Caret.Position);
+                cntLeftClick = 2;
+                return;          
             }
         }
 
-        private void OnKeyUp(object sender, RoutedEventArgs e)
-        {
-            //if ((e as KeyEventArgs).ctrl == true)
-            //{
-            //    if ((e as KeyEventArgs)..key == Key.Left) {
-            //        WlSelect("fwd");
-            //    }
-            //    else if ((e as KeyEventArgs).Key == Key.Right)
-            //    {
-            //        WlSelect("bwd");
-            //    }
-            //}
-        }
+        //private void OnKeyUp(object sender, RoutedEventArgs e)
+        //{
+        //    if ((e as KeyEventArgs).ctrl == true)
+        //    {
+        //        if ((e as KeyEventArgs).key == Key.Left) {
+        //            WlSelect("fwd");
+        //        }
+        //        else if ((e as KeyEventArgs).Key == Key.Right)
+        //        {
+        //            WlSelect("bwd");
+        //        }
+        //    }
+        //}
 
         //void ViewLayoutChanged(object sender, TextViewLayoutChangedEventArgs e)
         //{
@@ -121,148 +232,94 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         //    }
         //}
 
-        void CaretPositionChanged(object sender, CaretPositionChangedEventArgs e)
+        //void CaretPositionChanged(object sender, CaretPositionChangedEventArgs e)
+        //{
+            
+        //        UpdateAtCaretPosition(e.NewPosition);
+        //}
+                
+
+        void GetCodeRangeBySelection(TextSelection select)
         {
             
-                UpdateAtCaretPosition(e.NewPosition);
-        }
-
-        public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
-
-        CodeRange GetCodeRange(CaretPosition caretPosition)
-        {
-            SnapshotPoint? point = caretPosition.Point.GetPoint(SourceBuffer, caretPosition.Affinity);
-
-            //if (!point.HasValue)
-            //    return null;
-
-            //// If the new caret position is still within the current word (and on the same snapshot), we don't need to check it
-            //if (CurrentWord.HasValue
-            //    && CurrentWord.Value.Snapshot == View.TextSnapshot
-            //    && point.Value >= CurrentWord.Value.Start
-            //    && point.Value <= CurrentWord.Value.End)
+            //bool foundWord = true;
+            ////If we've selected something not worth highlighting, we might have missed a "word" by a little bit
+            //if (!WordExtentIsValid(currentRequest, word))
             //{
-            //    return;
+            //    //Before we retry, make sure it is worthwhile
+            //    if (word.Span.Start != currentRequest
+            //         || currentRequest == currentRequest.GetContainingLine().Start
+            //         || char.IsWhiteSpace((currentRequest - 1).GetChar()))
+            //    {
+            //        foundWord = false;
+            //    }
+            //    else
+            //    {
+            //        // Try again, one character previous. 
+            //        //If the caret is at the end of a word, pick up the word.
+            //        word = TextStructureNavigator.GetExtentOfWord(currentRequest - 1);
+
+            //        //If the word still isn't valid, we're done
+            //        if (!WordExtentIsValid(currentRequest, word))
+            //            foundWord = false;
+            //    }
             //}
-            
-            //Find all words in the buffer like the one the caret is on
-            TextExtent word = TextStructureNavigator.GetExtentOfWord(point.Value);
-            var selected = document.ActiveWindow.Selection as TextSelection;
-            CodeLocation p_start = new CodeLocation(selected.TopPoint.Line, word.Span.Start);
-            CodeLocation p_end = new CodeLocation(selected.TopPoint.Line, word.Span.End);
-            return new CodeRange(p_start, p_end);
-        }
 
-        void UpdateAtCaretPosition(CaretPosition caretPosition)
-        {
-            SnapshotPoint? point = caretPosition.Point.GetPoint(SourceBuffer, caretPosition.Affinity);
-            
-            if (!point.HasValue)
-                return;
-
-            // If the new caret position is still within the current word (and on the same snapshot), we don't need to check it
-            if (CurrentWord.HasValue
-                && CurrentWord.Value.Snapshot == View.TextSnapshot
-                && point.Value >= CurrentWord.Value.Start
-                && point.Value <= CurrentWord.Value.End)
-            {
-                return;
-            }
-
-            RequestedPoint = point.Value;
-            UpdateWordAdornments();
-        }
-
-        void UpdateWordAdornments()
-        {
-            SnapshotPoint currentRequest = RequestedPoint;
-            List<SnapshotSpan> wordSpans = new List<SnapshotSpan>();
-            //Find all words in the buffer like the one the caret is on
-            TextExtent word = TextStructureNavigator.GetExtentOfWord(currentRequest);
-
-
-            bool foundWord = true;
-            //If we've selected something not worth highlighting, we might have missed a "word" by a little bit
-            if (!WordExtentIsValid(currentRequest, word))
-            {
-                //Before we retry, make sure it is worthwhile
-                if (word.Span.Start != currentRequest
-                     || currentRequest == currentRequest.GetContainingLine().Start
-                     || char.IsWhiteSpace((currentRequest - 1).GetChar()))
-                {
-                    foundWord = false;
-                }
-                else
-                {
-                    // Try again, one character previous. 
-                    //If the caret is at the end of a word, pick up the word.
-                    word = TextStructureNavigator.GetExtentOfWord(currentRequest - 1);
-
-                    //If the word still isn't valid, we're done
-                    if (!WordExtentIsValid(currentRequest, word))
-                        foundWord = false;
-                }
-            }
-
-            if (!foundWord)
-            {
-                //If we couldn't find a word, clear out the existing markers
-                SynchronousUpdate(currentRequest, new NormalizedSnapshotSpanCollection(), null);
-                return;
-            }
-
-            SnapshotSpan currentWord = word.Span;
-            c_tokens.Add(currentWord.GetText());   
-
-            //if (currentWord.GetText().IndexOf("WriteLine") < 0)
+            //if (!foundWord)
             //{
-            //    //SnapshotSpan preSpan = TextStructureNavigator.GetSpanOfPreviousSibling(currentWord);
-            //    //SnapshotSpan nextSpan = TextStructureNavigator.GetSpanOfNextSibling(currentWord);
-
-            //    //string adjText = preSpan.GetText() + nextSpan.GetText();
-
+            //    //If we couldn't find a word, clear out the existing markers
+            //    SynchronousUpdate(currentRequest, new NormalizedSnapshotSpanCollection(), null);
             //    return;
             //}
 
-            //If this is the current word, and the caret moved within a word, we're done.
-            //if (CurrentWord.HasValue && currentWord == CurrentWord)
-            //    return;
+            //CurrentWord = word.Span;
+
+            cur_word = CodeRange.ConvertFromIndicies(source_code, ConvertToPosition(select.TopPoint) - 1, ConvertToPosition(select.BottomPoint));
+        }
+
+        // the position data will be converted from TextSelection to SnapshotPoint
+        internal static int ConvertToPosition(TextPoint point)
+        {
+            return point.AbsoluteCharOffset + point.Line - 2;
+        }
+        // the position data will be converted from SnapshotPoint to TextSelection
+        internal static int ConvertToCharOffset(SnapshotPoint point, int line)
+        {
+            return point.Position - line + 2;
+        }
 
 
-            //Find the new spans
-            //FindData findData = new FindData(currentWord.GetText(), currentWord.Snapshot);
-            //findData.FindOptions = FindOptions.WholeWord | FindOptions.MatchCase;
-
-            const string startPattenText = "(\\.)(\\s*)(WriteLine)(\\s*)(\\()(\\s*)(\")";
-            const string endPattenText = "(\")(\\s*)(\\))";
-
-            FindData startFindData = new FindData(startPattenText, currentWord.Snapshot);
-
-            FindData endFindData = new FindData(endPattenText, currentWord.Snapshot);
-
-            startFindData.FindOptions = FindOptions.Multiline | FindOptions.UseRegularExpressions;
-            endFindData.FindOptions = FindOptions.Multiline | FindOptions.UseRegularExpressions;
-            ICollection<SnapshotSpan> tmpSpanAll = TextSearchService.FindAll(startFindData);
-            ICollection<SnapshotSpan> tmpNewSpanAll = new List<SnapshotSpan>();
-            foreach (SnapshotSpan tmpSpan in tmpSpanAll)
+        int HightlightSimilarElements(Tuple<int, LocationInfo> tuple)
+        {
+            if (Max_similarity == 0)
             {
-                SnapshotSpan? newSpan = GetExpectedSpan(tmpSpan, endFindData);
-                if (newSpan != null)
-                {
-                    tmpNewSpanAll.Add((SnapshotSpan)newSpan);
+                // set the max similarity
+                Max_similarity = tuple.Item1;
+            }
+            else {
+                // if the similarity is less than the max similarity
+                if (tuple.Item1 != Max_similarity) {
+                    return -1;
                 }
             }
 
-            //foreach (SnapshotSpan tmpNewTxt in tmpNexTxtAll)
-            //{
-            //    tmpTxtAll.Add(tmpNewTxt);
-            //}
+            // build the collecton of highlighted elements
+            int newInclusiveStart = 0;
+            int newExclusiveEnd = 0;
+            tuple.Item2.CodeRange.ConvertToIndicies(source_code, out newInclusiveStart, out newExclusiveEnd);
 
-            wordSpans.AddRange(tmpNewSpanAll);
+            SnapshotPoint tmpStart = new SnapshotPoint(this.View.TextSnapshot, newInclusiveStart + 1);
+            SnapshotPoint tmpEnd = new SnapshotPoint(this.View.TextSnapshot, newExclusiveEnd);
+            SnapshotSpan s_span = new SnapshotSpan(tmpStart, tmpEnd);
 
-            //If another change hasn't happened, do a real update
-            if (currentRequest == RequestedPoint)
-                SynchronousUpdate(currentRequest, new NormalizedSnapshotSpanCollection(wordSpans), currentWord);
+            newSpanAll.Add(s_span);
+
+            // build the position data collecton of highlighted elements
+            int line = tuple.Item2.CodeRange.StartLine;
+            Tuple<int, int> tmpSelection = new Tuple<int,int>(
+                ConvertToCharOffset(tmpStart, line), ConvertToCharOffset(tmpEnd, line));
+            newSelectionAll.Add(tmpSelection);
+            return 0;
         }
         static bool WordExtentIsValid(SnapshotPoint currentRequest, TextExtent word)
         {
@@ -284,11 +341,11 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             return expectedSpan;
         }
 
-        void SynchronousUpdate(SnapshotPoint currentRequest, NormalizedSnapshotSpanCollection newSpans, SnapshotSpan? newCurrentWord)
+        void SynchronousUpdate(TextSelection CurrentSelection, NormalizedSnapshotSpanCollection newSpans, SnapshotSpan? newCurrentWord)
         {
             lock (updateLock)
             {
-                if (currentRequest != RequestedPoint)
+                if (CurrentSelection != RequestSelection)
                     return;
 
                 WordSpans = newSpans;
@@ -299,6 +356,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     tempEvent(this, new SnapshotSpanEventArgs(new SnapshotSpan(SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
             }
         }
+
+        public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
         public IEnumerable<ITagSpan<HighlightWordTag>> GetTags(NormalizedSnapshotSpanCollection spans)
         {
@@ -336,102 +395,36 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             }
         }
 
-        private void WlSelect(string selectType)
+        private void MoveSelection(string selectType)
         {
-            const string startPattenText = "(\\.)(\\s*)(WriteLine)(\\s*)(\\()(\\s*)(\")"; // (Console)(\s*)(\.)(\s*)(WriteLine)(\s*)(\()(\s*)(\")
-
-            const string endPattenText = "(\")(\\s*)(\\))";
 
             TextSelection selected = this.document.Selection;
-
+            
             if (selected != null)
             {
                 if (selectType == "fwd")
                 {
+                    CurrentSelectNum = CurrentSelectNum + 1; 
 
-                    int selectionStartAbsoluteOffset = 0;
-                    int selectionEndAbsoluteOffset = 0;
-                    int tmpSelectionStartAbsoluteOffset = 0;
-                    int tmpSelectionEndAbsoluteOffset = 0;
+                    Tuple<int, int> newSelection = newSelectionAll.ElementAt(CurrentSelectNum);
 
-                    // Save the current selection:
-                    tmpSelectionStartAbsoluteOffset = selected.TopPoint.AbsoluteCharOffset;
-                    tmpSelectionEndAbsoluteOffset = selected.BottomPoint.AbsoluteCharOffset;
-                    if (selected.Text.Length > 0)
-                    {
-                        selected.MoveToAbsoluteOffset(tmpSelectionStartAbsoluteOffset, false);
-                    }
-
-                    if (selected.FindPattern(startPattenText, (int)vsFindOptions.vsFindOptionsRegularExpression))
-                    {
-                        selectionStartAbsoluteOffset = selected.BottomPoint.AbsoluteCharOffset;
-
-                        if (selected.FindPattern(endPattenText, (int)vsFindOptions.vsFindOptionsRegularExpression))
-                        {
-                            selectionEndAbsoluteOffset = selected.TopPoint.AbsoluteCharOffset;
-
-                            // Restore the original selection:
-                            selected.MoveToAbsoluteOffset(selectionStartAbsoluteOffset, false);
-                            selected.MoveToAbsoluteOffset(selectionEndAbsoluteOffset, true);
-                        }
-                        else
-                        {
-                            selected.MoveToAbsoluteOffset(tmpSelectionStartAbsoluteOffset, false);
-                            selected.MoveToAbsoluteOffset(tmpSelectionEndAbsoluteOffset, true);
-                        }
-                    }
-                    else
-                    {
-                        selected.MoveToAbsoluteOffset(tmpSelectionEndAbsoluteOffset, true);
-                    }
+                    selected.MoveToAbsoluteOffset(newSelection.Item1, false);
+                    selected.MoveToAbsoluteOffset(newSelection.Item2, true);
                 }
                 else if (selectType == "bwd")
                 {
-                    int tmpSelectionStartAbsoluteOffset = 0;
-                    int tmpSelectionEndAbsoluteOffset = 0;
 
-                    // Save the current selection:
-                    tmpSelectionStartAbsoluteOffset = selected.TopPoint.AbsoluteCharOffset;
-                    tmpSelectionEndAbsoluteOffset = selected.BottomPoint.AbsoluteCharOffset;
+                    CurrentSelectNum = CurrentSelectNum - 1;
 
-                    int selectionStartAbsoluteOffset = 0;
-                    int selectionEndAbsoluteOffset = 0;
-
-                    //selectionStartAbsoluteOffset = selected.TopPoint.AbsoluteCharOffset;
-                    //selectionEndAbsoluteOffset = selected.TopPoint.AbsoluteCharOffset;
-
-                    selected.StartOfDocument();
-
-                    while (selected.FindPattern(startPattenText, (int)vsFindOptions.vsFindOptionsRegularExpression))
-                    {
-                        if (selected.BottomPoint.AbsoluteCharOffset < tmpSelectionStartAbsoluteOffset ||
-                            (selected.Text == "" &&
-                                 selected.BottomPoint.AbsoluteCharOffset == tmpSelectionStartAbsoluteOffset))
-                        {
-                            selectionStartAbsoluteOffset = selected.BottomPoint.AbsoluteCharOffset;
-                        }
-                        else
-                        {
-                            if (selectionStartAbsoluteOffset != 0)
-                            {
-                                selected.MoveToAbsoluteOffset(selectionStartAbsoluteOffset, false);
-                            }
-                            break;
-                        }
+                    if (CurrentSelectNum < 0) { 
+                        CurrentSelectNum = 0;
+                        return;
                     }
 
-                    if (selectionStartAbsoluteOffset != 0 && selected.FindPattern(endPattenText, (int)vsFindOptions.vsFindOptionsRegularExpression))
-                    {
-                        selectionEndAbsoluteOffset = selected.TopPoint.AbsoluteCharOffset;
-                        // Restore the original selection:
-                        selected.MoveToAbsoluteOffset(selectionStartAbsoluteOffset, false);
-                        selected.MoveToAbsoluteOffset(selectionEndAbsoluteOffset, true);
-                    }
-                    else
-                    {
-                        selected.MoveToAbsoluteOffset(tmpSelectionStartAbsoluteOffset, false);
-                        selected.MoveToAbsoluteOffset(tmpSelectionEndAbsoluteOffset, true);
-                    }
+                    Tuple<int, int> newSelection = newSelectionAll.ElementAt(CurrentSelectNum);
+
+                    selected.MoveToAbsoluteOffset(newSelection.Item1, false);
+                    selected.MoveToAbsoluteOffset(newSelection.Item2, true);
                 }
             }
         }
