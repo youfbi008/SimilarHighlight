@@ -3,15 +3,15 @@
 
 HighlightAndMove is a simple extension by the Managed Extensibility Framework.
 
-1.Highlight all similar elements of current element.  
-2.Change the selected element of the similar elements by shortcuts.
+1.Highlight all similar elements of the selected element.  
+2.Change the selection to another int the similar elements by shortcuts.
 
 You can press `Ctrl + Alt + ->` to make the next similar element selected.  
 And, you can press `Ctrl + Alt + <-` to make the the previous similar element selected.
 
 # Requirements
 
-*visual studio 2012 sdk
+* visual studio 2012 sdk
 
 # How to build
 
