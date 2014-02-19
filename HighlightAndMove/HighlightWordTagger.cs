@@ -19,6 +19,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Xml.Linq;
 using System.Xml;
+using Code2Xml.Languages.ANTLRv3.Processors.CSharp;
 
 
 namespace HighlightAndMove
@@ -31,7 +32,6 @@ namespace HighlightAndMove
         ITextStructureNavigator TextStructureNavigator { get; set; }
         NormalizedSnapshotSpanCollection WordSpans { get; set; }
         SnapshotSpan? CurrentWord { get; set; }
-        SnapshotPoint RequestedPoint { get; set; }
         EnvDTE.Document document { get; set; }
         object updateLock = new object();
 
@@ -40,10 +40,9 @@ namespace HighlightAndMove
         // the source code of current file
         string source_code { get; set; }
         // the max similarity of the similar Elements
-        int Max_similarity { get; set; }
+  //      int Max_similarity { get; set; }
         // the collecton of highlighted elements
-        ICollection<SnapshotSpan> newSpanAll { get; set; }        
-        CodeRange cur_word { get; set; }
+        ICollection<SnapshotSpan> newSpanAll { get; set; }
         // Count the number of left mouse button clicks
         int cntLeftClick { get; set; }
         // current selection
@@ -52,15 +51,27 @@ namespace HighlightAndMove
         int CurrentSelectNum { get; set; }
         // the position data collecton of highlighted elements
         ICollection<Tuple<int, int>> newSelectionAll { get; set; }
-
+        CSharpProcessorUsingAntlr3 processor;
+        FileInfo currentFile { get; set; }
+        List<XElement> tokenElements { get; set; }
 
         public HighlightWordTagger(IWpfTextView view, ITextBuffer sourceBuffer, ITextSearchService textSearchService,
 ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
-            this.cntLeftClick = 0;
-            this.Max_similarity = 0;
-            this.View = view;
             this.document = document;
+            if (this.document != null && this.currentFile == null)
+            {
+                this.processor = new Code2Xml.Languages.ANTLRv3.Processors.CSharp.CSharpProcessorUsingAntlr3();
+                this.currentFile = new FileInfo(this.document.FullName);
+                var xml = processor.GenerateXml(currentFile);
+                //var elements = xml.Descendants("identifier").ToList();
+                //// Get the data list of TOKEN
+                //this.tokenElements = elements.Descendants("TOKEN").ToList();
+            }
+
+            this.cntLeftClick = 0;
+            this.View = view;
+            
             this.View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;
             this.View.VisualElement.PreviewMouseDown += VisualElement_PreviewMouseDown;
             this.View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
@@ -77,6 +88,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         // TODO 2. If we've selected something not worth highlighting, we might have missed a "word" 
         void VisualElement_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            
 
             if (cntLeftClick == 2)
             {
@@ -88,68 +100,58 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 RequestSelection = this.document.Selection;
             }
 
-            if (RequestSelection.Text != "" )
+            if (RequestSelection.Text != "" || RequestSelection.Text.Length > 100)
             {
                 TextSelection CurrentSelection = RequestSelection;;
-                FileInfo cur_file = new FileInfo(this.document.FullName);
                 source_code = File.ReadAllText(this.document.FullName);
-                var processor = new Code2Xml.Languages.ANTLRv3.Processors.CSharp.CSharpProcessorUsingAntlr3();
-                var xml = processor.GenerateXml(cur_file);
-                
-                //IEnumerable<XElement> tests =
-                //    from item in xml.Element("TOKEN")
-                //    where (string)item == RequestSelection.Text
-                //    select item;
-                //foreach (XElement el in tests) { 
-                    
+
+                CodeRange currentRange = new CodeRange();
+
+                // Validation Check
+                //if (!IsValidSelection(ref currentRange) || currentRange == null)
+                //{
+                //    return;
                 //}
-                //    Console.WriteLine((string)el.Attribute("TestId"));
 
-                List<SnapshotSpan> wordSpans = new List<SnapshotSpan>();
-                GetCodeRangeBySelection(RequestSelection);
-
-                SnapshotPoint tmpStart = new SnapshotPoint(this.View.TextSnapshot, ConvertToPosition(RequestSelection.TopPoint));
-                SnapshotPoint tmpEnd = new SnapshotPoint(this.View.TextSnapshot, ConvertToPosition(RequestSelection.BottomPoint));
-
-                SnapshotSpan currentWord = new SnapshotSpan(tmpStart, tmpEnd);
+                SnapshotPoint currentStart = ConvertToPosition(RequestSelection.TopPoint);
+                SnapshotPoint currentEnd = ConvertToPosition(RequestSelection.BottomPoint);
+                SnapshotSpan currentWord = new SnapshotSpan(currentStart, currentEnd);
                 
-                //If we couldn't find a word, clear out the existing markers
-                if (cur_word == null)
-                {
-                    return;
-                }
+                List<SnapshotSpan> wordSpans = new List<SnapshotSpan>();
+                currentRange = GetCodeRangeBySelection(currentWord);                
+
 
                 // It will compare two elements by default.
                 if (locations == null || locations.Count<LocationInfo>() == 2)
                 {
                     locations = new[] {new LocationInfo {
-                        CodeRange = cur_word,
-				        FileInfo = cur_file,
+                        CodeRange = currentRange,
+				        FileInfo = currentFile,
 			        }};
                 }
                 else
                 {
                     locations = locations.Concat(new[] {new LocationInfo {
-                        CodeRange = cur_word,
-				        FileInfo = cur_file,
+                        CodeRange = currentRange,
+				        FileInfo = currentFile,
 			        }});
 
                     var ret = Inferrer.GetSimilarElements(processor, locations,
-                        new[] { cur_file });
+                        new[] { currentFile });
+
+                    // There is no similar element.
+                    if (ret.Count() == 0 || ret.First().Item1 == 0)
+                    { 
+                        return;
+                    }
 
                     newSpanAll = new List<SnapshotSpan>();
                     newSelectionAll = new List<Tuple<int, int>>();
-                    Max_similarity = 0;
                     WordSpans = null;
                     CurrentSelectNum = 0;
-
-                    foreach (var tuple in ret.Take(10))
+             
+                    foreach (var tuple in ret)
                     {
-                        // if the similarity is 0
-                       if (tuple.Item1 == 0) {
-                            break;
-                        }
-
                         // if the similarity is less than the max similarity, it will be stopped
                         if (HightlightSimilarElements(tuple) < 0) {
                             break;
@@ -163,16 +165,15 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                         Console.WriteLine("Similarity: " + score + ", code: " + fragment);
                     }
 
-
                     if (newSpanAll.Count == 0) {
                         return;
                     }
 
                     wordSpans.AddRange(newSpanAll);
-                    newSelectionAll.OrderBy(sel => sel.Item1);
+                    newSelectionAll = newSelectionAll.OrderBy(sel => sel.Item1).ToList();
 
                     // get the order number of current selection in the highlighted elements
-                    CurrentSelectNum = newSelectionAll.Select( (item, index) => new {Item = item, Index = index})
+                    CurrentSelectNum = newSelectionAll.Select((item, index) => new { Item = item, Index = index })
                         .First(sel => sel.Item.Item1 == RequestSelection.TopPoint.AbsoluteCharOffset).Index;                    
                   
                     //If another change hasn't happened, do a real update
@@ -209,115 +210,83 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             }
         }
 
-        //private void OnKeyUp(object sender, RoutedEventArgs e)
-        //{
-        //    if ((e as KeyEventArgs).ctrl == true)
-        //    {
-        //        if ((e as KeyEventArgs).key == Key.Left) {
-        //            WlSelect("fwd");
-        //        }
-        //        else if ((e as KeyEventArgs).Key == Key.Right)
-        //        {
-        //            WlSelect("bwd");
-        //        }
-        //    }
-        //}
-
-        //void ViewLayoutChanged(object sender, TextViewLayoutChangedEventArgs e)
-        //{
-        //    // If a new snapshot wasn't generated, then skip this layout
-        //    if (e.NewSnapshot != e.OldSnapshot)
-        //    {
-        //        UpdateAtCaretPosition(View.Caret.Position);
-        //    }
-        //}
-
-        //void CaretPositionChanged(object sender, CaretPositionChangedEventArgs e)
-        //{
-            
-        //        UpdateAtCaretPosition(e.NewPosition);
-        //}
-                
-
-        void GetCodeRangeBySelection(TextSelection select)
+        bool IsValidSelection(ref CodeRange currentRange)
         {
-            
-            //bool foundWord = true;
-            ////If we've selected something not worth highlighting, we might have missed a "word" by a little bit
-            //if (!WordExtentIsValid(currentRequest, word))
-            //{
-            //    //Before we retry, make sure it is worthwhile
-            //    if (word.Span.Start != currentRequest
-            //         || currentRequest == currentRequest.GetContainingLine().Start
-            //         || char.IsWhiteSpace((currentRequest - 1).GetChar()))
-            //    {
-            //        foundWord = false;
-            //    }
-            //    else
-            //    {
-            //        // Try again, one character previous. 
-            //        //If the caret is at the end of a word, pick up the word.
-            //        word = TextStructureNavigator.GetExtentOfWord(currentRequest - 1);
-
-            //        //If the word still isn't valid, we're done
-            //        if (!WordExtentIsValid(currentRequest, word))
-            //            foundWord = false;
-            //    }
-            //}
-
-            //if (!foundWord)
-            //{
-            //    //If we couldn't find a word, clear out the existing markers
-            //    SynchronousUpdate(currentRequest, new NormalizedSnapshotSpanCollection(), null);
-            //    return;
-            //}
-
-            //CurrentWord = word.Span;
-
-            cur_word = CodeRange.ConvertFromIndicies(source_code, ConvertToPosition(select.TopPoint) - 1, ConvertToPosition(select.BottomPoint));
-        }
-
-        // the position data will be converted from TextSelection to SnapshotPoint
-        internal static int ConvertToPosition(TextPoint point)
-        {
-            return point.AbsoluteCharOffset + point.Line - 2;
-        }
-        // the position data will be converted from SnapshotPoint to TextSelection
-        internal static int ConvertToCharOffset(SnapshotPoint point, int line)
-        {
-            return point.Position - line + 2;
-        }
-
-
-        int HightlightSimilarElements(Tuple<int, LocationInfo> tuple)
-        {
-            if (Max_similarity == 0)
+            // Repeat check   
+            if (this.CurrentWord != null)
             {
-                // set the max similarity
-                Max_similarity = tuple.Item1;
-            }
-            else {
-                // if the similarity is less than the max similarity
-                if (tuple.Item1 != Max_similarity) {
-                    return -1;
+                SnapshotPoint currentStart = ConvertToPosition(RequestSelection.TopPoint);
+                SnapshotPoint currentEnd = ConvertToPosition(RequestSelection.BottomPoint);
+
+                if (currentStart.Position == ((SnapshotSpan)this.CurrentWord).Start.Position &&
+                    currentEnd.Position == ((SnapshotSpan)this.CurrentWord).End.Position)
+                {
+                    return false;
                 }
             }
 
+            // Exist check
+            var check = tokenElements.FindAll(el => el.Value == RequestSelection.Text &&
+                el.Attribute("startline").Value == RequestSelection.TopPoint.Line.ToString() &&
+                el.Attribute("startpos").Value == (RequestSelection.TopPoint.LineCharOffset - 1).ToString());
+
+            // if the selected word is not the whole word. it will be ignored.
+            if (check.Count != 1)
+            {
+                return false;
+            }
+            else {
+                var anceIdentifiers = check[0].Ancestors("identifier").ToList();
+                if (anceIdentifiers.Count == 1) {
+                    currentRange = CodeRange.Locate(anceIdentifiers[0]);
+                }                
+            }
+
+            return true;
+        }
+
+        CodeRange GetCodeRangeBySelection(SnapshotSpan currentWord)
+        {
+
+          //  return null;
+            return CodeRange.ConvertFromIndicies(source_code, currentWord.Start.Position - 1 , currentWord.End.Position);
+        }
+
+        // convert TextSelection to SnapshotPoint
+        // AbsoluteCharOffset count line break as 1 character.
+        // Line and LineCharOffset begin at one.
+        internal SnapshotPoint ConvertToPosition(TextPoint selectPoint)
+        {
+            int lineNum = selectPoint.Line - 1;
+            int offset = selectPoint.LineCharOffset - 1;
+            return this.View.TextSnapshot.GetLineFromLineNumber(lineNum).Start + offset;
+            //return point.AbsoluteCharOffset + point.Line - 2;
+        }
+
+        // the position data will be converted from SnapshotPoint to TextSelection
+        internal int ConvertToCharOffset(SnapshotPoint point)
+        {
+            int lineNum = this.View.TextSnapshot.GetLineNumberFromPosition(point.Position);
+            return point.Position - lineNum + 2;
+        }
+
+        int HightlightSimilarElements(Tuple<int, LocationInfo> tuple)
+        {
+            
             // build the collecton of highlighted elements
             int newInclusiveStart = 0;
             int newExclusiveEnd = 0;
             tuple.Item2.CodeRange.ConvertToIndicies(source_code, out newInclusiveStart, out newExclusiveEnd);
 
-            SnapshotPoint tmpStart = new SnapshotPoint(this.View.TextSnapshot, newInclusiveStart + 1);
+            SnapshotPoint tmpStart = new SnapshotPoint(this.View.TextSnapshot, newInclusiveStart);
             SnapshotPoint tmpEnd = new SnapshotPoint(this.View.TextSnapshot, newExclusiveEnd);
             SnapshotSpan s_span = new SnapshotSpan(tmpStart, tmpEnd);
 
             newSpanAll.Add(s_span);
 
             // build the position data collecton of highlighted elements
-            int line = tuple.Item2.CodeRange.StartLine;
             Tuple<int, int> tmpSelection = new Tuple<int,int>(
-                ConvertToCharOffset(tmpStart, line), ConvertToCharOffset(tmpEnd, line));
+                ConvertToCharOffset(tmpStart), ConvertToCharOffset(tmpEnd));
             newSelectionAll.Add(tmpSelection);
             return 0;
         }

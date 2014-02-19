@@ -33,7 +33,7 @@ namespace HighlightAndMove.Tests
 			// using CodeRange.ConvertFromIndicies()
 			//
 			var processorIdentifier = new LocationInfo {
-				CodeRange = CodeRange.Locate(elements.First(e => e.TokenText() == "processor")),
+                CodeRange = CodeRange.Locate(elements.First(e => e.TokenText() == "processor")),
 				FileInfo = fileInfo,
 			};
 			var fileInfoIdentifier = new LocationInfo {
@@ -52,9 +52,7 @@ namespace HighlightAndMove.Tests
 				var startAndEnd = location.CodeRange.ConvertToIndicies(code);
                 var fragment = code.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1);
 				Console.WriteLine("Similarity: " + score + ", code: " + fragment);
-			}
-
-           
+			}           
 		}
     }
 }

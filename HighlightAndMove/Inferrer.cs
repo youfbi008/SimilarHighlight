@@ -18,6 +18,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -128,6 +129,10 @@ namespace HighlightAndMove {
 			HashSet<string> commonKeys = null;
 			foreach (var element in elements) {
 				var keys = element.GetSurroundingKeys(length, inner, outer);
+                foreach (var a in keys)
+                {
+                    Debug.WriteLine(a);
+                }
 				if (commonKeys == null) {
 					commonKeys = keys;
 				} else {
@@ -186,23 +191,42 @@ namespace HighlightAndMove {
 			// Extract surrounding nodes from each candidate node
 			var commonKeys = elements.GetCommonKeys(range, true, true);
 
-			return candidates.SelectMany(
-					kv => {
-						var fileInfo = new FileInfo(kv.Key);
-						return kv.Value.Select(
-								e => Tuple.Create(
-										// Count how many common surrounding nodes each candidate node has
-										e.GetSurroundingKeys(range, inner, outer)
-												.Count(commonKeys.Contains),
-										e))
-								.Select(
-										t => Tuple.Create(
-												t.Item1,	// Indicates the simlarity
-												new LocationInfo {
-													FileInfo = fileInfo,
-													CodeRange = CodeRange.Locate(t.Item2),
-												}));
-					})
+            foreach (var a in commonKeys) {
+                Debug.WriteLine(a);
+            }
+            // similarity range
+            int simRange = 5;
+
+            if (commonKeys.Count <= simRange)
+            {
+                return Enumerable.Empty<Tuple<int, LocationInfo>>();
+            }
+            
+            int minSimilarity = commonKeys.Count - simRange;
+
+            return candidates.SelectMany(
+                    kv =>
+                    {
+                        var fileInfo = new FileInfo(kv.Key);
+                         
+
+                        return kv.Value.Select(                                    
+                                e => Tuple.Create(                       
+                                    // Count how many common surrounding nodes each candidate node has
+                                    			e.GetSurroundingKeys(range, inner, outer)
+                                    					.Count(commonKeys.Contains)  ,
+                                        e))
+                                .Where(e =>  e.Item1 > minSimilarity
+                                )
+                                .Select(
+                                        t => Tuple.Create(
+                                                t.Item1,	// Indicates the simlarity
+                                                new LocationInfo
+                                                {
+                                                    FileInfo = fileInfo,
+                                                    CodeRange = CodeRange.Locate(t.Item2),
+                                                }));
+                    })
 					// Sort candidate nodes using the similarities
 					.OrderByDescending(t => t.Item1);
 		}
