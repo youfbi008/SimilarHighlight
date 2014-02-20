@@ -39,8 +39,6 @@ namespace HighlightAndMove
         IEnumerable<LocationInfo> locations { get; set; }
         // the source code of current file
         string source_code { get; set; }
-        // the max similarity of the similar Elements
-  //      int Max_similarity { get; set; }
         // the collecton of highlighted elements
         ICollection<SnapshotSpan> newSpanAll { get; set; }
         // Count the number of left mouse button clicks
@@ -89,7 +87,6 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         void VisualElement_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             
-
             if (cntLeftClick == 2)
             {
                 cntLeftClick = 0;
@@ -100,7 +97,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 RequestSelection = this.document.Selection;
             }
 
-            if (RequestSelection.Text != "" || RequestSelection.Text.Length > 100)
+            if (RequestSelection.Text != "")// || RequestSelection.Text.Length > 100
             {
                 TextSelection CurrentSelection = RequestSelection;;
                 source_code = File.ReadAllText(this.document.FullName);
@@ -119,8 +116,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 
                 List<SnapshotSpan> wordSpans = new List<SnapshotSpan>();
                 currentRange = GetCodeRangeBySelection(currentWord);                
-
-
+                
                 // It will compare two elements by default.
                 if (locations == null || locations.Count<LocationInfo>() == 2)
                 {
@@ -136,6 +132,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 				        FileInfo = currentFile,
 			        }});
 
+                    Inferrer.SimilarityRange = 5;
                     var ret = Inferrer.GetSimilarElements(processor, locations,
                         new[] { currentFile });
 
@@ -172,11 +169,17 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     wordSpans.AddRange(newSpanAll);
                     newSelectionAll = newSelectionAll.OrderBy(sel => sel.Item1).ToList();
 
-                    // get the order number of current selection in the highlighted elements
-                    CurrentSelectNum = newSelectionAll.Select((item, index) => new { Item = item, Index = index })
-                        .First(sel => sel.Item.Item1 == RequestSelection.TopPoint.AbsoluteCharOffset).Index;                    
-                  
-                    //If another change hasn't happened, do a real update
+                    // Get the order number of current selection in the highlighted elements
+                    var curSelection = newSelectionAll.Select((item, index) => new { Item = item, Index = index })
+                        .First(sel => sel.Item.Item1 <= RequestSelection.TopPoint.AbsoluteCharOffset &&
+                        sel.Item.Item2 >= RequestSelection.BottomPoint.AbsoluteCharOffset
+                        );
+
+                    if (curSelection != null)
+                    {
+                        CurrentSelectNum = curSelection.Index;
+                    }
+                    // If another change hasn't happened, do a real update
                     if (CurrentSelection == RequestSelection)
                         SynchronousUpdate(CurrentSelection, new NormalizedSnapshotSpanCollection(wordSpans), currentWord);
                 }
@@ -249,7 +252,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
 
           //  return null;
-            return CodeRange.ConvertFromIndicies(source_code, currentWord.Start.Position - 1 , currentWord.End.Position);
+            return CodeRange.ConvertFromIndicies(source_code, currentWord.Start.Position , currentWord.End.Position);
         }
 
         // convert TextSelection to SnapshotPoint
@@ -267,7 +270,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         internal int ConvertToCharOffset(SnapshotPoint point)
         {
             int lineNum = this.View.TextSnapshot.GetLineNumberFromPosition(point.Position);
-            return point.Position - lineNum + 2;
+            return point.Position - lineNum + 1;
         }
 
         int HightlightSimilarElements(Tuple<int, LocationInfo> tuple)

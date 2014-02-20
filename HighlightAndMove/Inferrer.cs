@@ -31,9 +31,12 @@ namespace HighlightAndMove {
 	public struct LocationInfo {
 		public FileInfo FileInfo;
 		public CodeRange CodeRange;
-	}
+	}       
 
 	public static class Inferrer {
+        // similarity range
+        public static int SimilarityRange { get; set; }
+
 		public static HashSet<string> GetSurroundingKeys(
 				this XElement element, int length, bool inner = true, bool outer = true) {
 			//inner = outer = true;
@@ -194,15 +197,18 @@ namespace HighlightAndMove {
             foreach (var a in commonKeys) {
                 Debug.WriteLine(a);
             }
-            // similarity range
-            int simRange = 5;
 
-            if (commonKeys.Count <= simRange)
+            if (SimilarityRange == null)
+            {
+                SimilarityRange = 0;
+            }
+
+            if (commonKeys.Count <= SimilarityRange)
             {
                 return Enumerable.Empty<Tuple<int, LocationInfo>>();
-            }
-            
-            int minSimilarity = commonKeys.Count - simRange;
+            }                        
+
+            int minSimilarity = commonKeys.Count - SimilarityRange;
 
             return candidates.SelectMany(
                     kv =>
@@ -230,5 +236,5 @@ namespace HighlightAndMove {
 					// Sort candidate nodes using the similarities
 					.OrderByDescending(t => t.Item1);
 		}
-	}
+    }
 }
