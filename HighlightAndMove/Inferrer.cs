@@ -37,6 +37,8 @@ namespace HighlightAndMove {
         // similarity range
         public static int SimilarityRange { get; set; }
 
+        private static int keysCount { get; set; }
+
 		public static HashSet<string> GetSurroundingKeys(
 				this XElement element, int length, bool inner = true, bool outer = true) {
 			//inner = outer = true;
@@ -130,8 +132,10 @@ namespace HighlightAndMove {
 		public static HashSet<string> GetCommonKeys(
 				this IEnumerable<XElement> elements, int length, bool inner = true, bool outer = true) {
 			HashSet<string> commonKeys = null;
+            keysCount = 0;
 			foreach (var element in elements) {
 				var keys = element.GetSurroundingKeys(length, inner, outer);
+                keysCount += keys.Count();
                 foreach (var a in keys)
                 {
                     Debug.WriteLine(a);
@@ -163,6 +167,7 @@ namespace HighlightAndMove {
 		public static IEnumerable<Tuple<int, LocationInfo>> GetSimilarElements(
 				Processor processor, IEnumerable<LocationInfo> locations, IEnumerable<FileInfo> targets,
 				int range = 5, bool inner = true, bool outer = true) {
+            var similarityRange = 0;
 			var path2Ast = new Dictionary<string, XElement>();
 			var paths = locations.Select(l => l.FileInfo).Concat(targets)
 					.Select(f => f.FullName)
@@ -198,29 +203,30 @@ namespace HighlightAndMove {
                 Debug.WriteLine(a);
             }
 
-            if (SimilarityRange == null)
+            if (SimilarityRange == 0 && keysCount != 0)
             {
-                SimilarityRange = 0;
+                similarityRange = keysCount / 10;
+            }
+            else {
+                similarityRange = SimilarityRange;
             }
 
-            if (commonKeys.Count <= SimilarityRange)
+            if (commonKeys.Count <= similarityRange)
             {
                 return Enumerable.Empty<Tuple<int, LocationInfo>>();
-            }                        
+            }
 
-            int minSimilarity = commonKeys.Count - SimilarityRange;
+            int minSimilarity = commonKeys.Count - similarityRange;
 
             return candidates.SelectMany(
                     kv =>
                     {
                         var fileInfo = new FileInfo(kv.Key);
-                         
-
                         return kv.Value.Select(                                    
                                 e => Tuple.Create(                       
                                     // Count how many common surrounding nodes each candidate node has
-                                    			e.GetSurroundingKeys(range, inner, outer)
-                                    					.Count(commonKeys.Contains)  ,
+                                    e.GetSurroundingKeys(range, inner, outer)
+                                        .Count(commonKeys.Contains)  ,
                                         e))
                                 .Where(e =>  e.Item1 > minSimilarity
                                 )

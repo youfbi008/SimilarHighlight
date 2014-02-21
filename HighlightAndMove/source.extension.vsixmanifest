@@ -3,7 +3,7 @@
 	<Metadata>
 		<Identity Id="HighlightAndMove.Microsoft.1747f18e-0b0e-45b2-9a06-7348a55e3dc7" Version="1.1" Language="en-US" Publisher="Microsoft" />
 		<DisplayName>HighlightAndMove</DisplayName>
-		<Description xml:space="preserve">Highlight similar elements by selecting twice. Then the cursor of the selected element can be move onto other element of the similar elements by shortcuts.</Description>
+		<Description xml:space="preserve">Highlight all similar elements by selecting twice. Then the cursor of the selected element can be move onto other element of the similar elements by shortcuts.</Description>
 		<Icon>ICONsnapshot.jpg</Icon>
 		<PreviewImage>ICONsnapshot.jpg</PreviewImage>
 	</Metadata>
