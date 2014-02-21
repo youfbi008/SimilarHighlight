@@ -428,8 +428,11 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             {
                 if (selectType == "fwd")
                 {
-                    CurrentSelectNum = CurrentSelectNum + 1; 
-
+                    CurrentSelectNum = CurrentSelectNum + 1;
+                    if (newSelectionAll.Count() <= CurrentSelectNum) {
+                        CurrentSelectNum = newSelectionAll.Count() - 1;
+                        return;
+                    }
                     Tuple<int, int> newSelection = newSelectionAll.ElementAt(CurrentSelectNum);
 
                     selected.MoveToAbsoluteOffset(newSelection.Item1, false);
