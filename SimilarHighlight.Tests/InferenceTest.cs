@@ -8,13 +8,13 @@ using Code2Xml.Core;
 using Code2Xml.Core.Location;
 using NUnit.Framework;
 
-namespace HighlightAndMove.Tests
+namespace SimilarHighlight.Tests
 {
 	[TestFixture]
     public class InferenceTest
     {
 		[Test]
-		[TestCase(@"../../../HighlightAndMove.Tests/InferenceTest.cs")]
+        [TestCase(@"../../../SimilarHighlight.Tests/InferenceTest.cs")]
 		public void TestGetSimilarElements(string path) {
 			var processor = ProcessorLoader.CSharpUsingAntlr3;	// processorIdentifier indicates here
 			var fileInfo = new FileInfo(path);					// fileInfoIdentifier indicates here
@@ -32,18 +32,21 @@ namespace HighlightAndMove.Tests
 			// that is, source code, a start index, and an end index
 			// using CodeRange.ConvertFromIndicies()
 			//
+
+            var firstRange = CodeRange.Locate(elements.First(e => e.TokenText() == "processor"));
+            var secondRange = CodeRange.Locate(elements.First(e => e.TokenText() == "fileInfo"));
 			var processorIdentifier = new LocationInfo {
-                CodeRange = CodeRange.Locate(elements.First(e => e.TokenText() == "processor")),
-				FileInfo = fileInfo,
+                CodeRange = firstRange,
+                XElement = firstRange.FindOutermostElement(xml),
 			};
 			var fileInfoIdentifier = new LocationInfo {
-                CodeRange = CodeRange.Locate(elements.First(e => e.TokenText() == "fileInfo")),
-				FileInfo = fileInfo,
+                CodeRange = secondRange,
+                XElement = secondRange.FindOutermostElement(xml),
 			};
 
 			// Get similar nodes
 			var ret = Inferrer.GetSimilarElements(processor, new[] { processorIdentifier, fileInfoIdentifier },
-					new[] { fileInfo });
+                    xml);
 
 			// Show the similar nodes
 			foreach (var tuple in ret.Take(10)) {

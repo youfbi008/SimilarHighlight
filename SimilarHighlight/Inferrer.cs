@@ -28,11 +28,10 @@ using Paraiba.Collections.Generic;
 using Paraiba.Linq;
 using System.Threading.Tasks;
 
-namespace HighlightAndMove
+namespace SimilarHighlight
 {
     public struct LocationInfo
     {
-        //	public FileInfo FileInfo;
         public XElement XElement;
         public CodeRange CodeRange;
     }
@@ -159,10 +158,6 @@ namespace HighlightAndMove
             {
                 var keys = element.GetSurroundingKeys(length, inner, outer);
                 keysCount += keys.Count();
-                foreach (var a in keys)
-                {
-                    Debug.WriteLine(a);
-                }
                 if (commonKeys == null)
                 {
                     commonKeys = keys;
@@ -214,8 +209,7 @@ namespace HighlightAndMove
                 // Extract candidate nodes that has one of the determined names
                 var candidates = new List<IEnumerable<XElement>>();
 
-                Stopwatch sw = new Stopwatch();
-                sw.Start();
+                TimeWatch.Start();
 
                 candidates.Add(
                         root.Descendants().AsParallel()
@@ -224,13 +218,7 @@ namespace HighlightAndMove
                 // Extract surrounding nodes from each candidate node
                 var commonKeys = elements.GetCommonKeys(range, true, true);
 
-                sw.Stop();
-                Debug.WriteLine("(total cost " + (sw.ElapsedMilliseconds).ToString() + " seconds)");
-
-                foreach (var a in commonKeys)
-                {
-                    Debug.WriteLine(a);
-                }
+                TimeWatch.Stop("FindOutCandidateElements");
 
                 if (SimilarityRange == 0 && keysCount != 0)
                 {
@@ -248,10 +236,9 @@ namespace HighlightAndMove
 
                 int minSimilarity = commonKeys.Count - similarityRange;
 
-                //sw.Reset();
-                //sw.Start();
+                TimeWatch.Start();
 
-                return candidates.AsParallel().SelectMany(
+                var aa = candidates.AsParallel().SelectMany(
                         kv =>
                         {
                             return kv.Select(
@@ -273,8 +260,8 @@ namespace HighlightAndMove
                         })
                     // Sort candidate nodes using the similarities
                         .OrderByDescending(t => t.Item1).ToList();
-                //sw.Stop();
-                //Debug.WriteLine("(total cost " + (sw.ElapsedMilliseconds).ToString() + " seconds)");
+                TimeWatch.Stop("FindOutSimilarElements");
+                return aa;
             }
             catch (Exception exc)
             {

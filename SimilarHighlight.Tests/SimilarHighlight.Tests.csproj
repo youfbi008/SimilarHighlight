@@ -7,8 +7,8 @@
     <ProjectGuid>{CE69FD4A-CFC9-47B6-BBD9-C0D865189B86}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>HighlightAndMove.Tests</RootNamespace>
-    <AssemblyName>HighlightAndMove.Tests</AssemblyName>
+    <RootNamespace>SimilarHighlight.Tests</RootNamespace>
+    <AssemblyName>SimilarHighlight.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
@@ -82,9 +82,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\HighlightAndMove\HighlightAndMove.csproj">
+    <ProjectReference Include="..\SimilarHighlight\SimilarHighlight.csproj">
       <Project>{913AC4C7-B0EC-4E16-AD25-637395F1B93C}</Project>
-      <Name>HighlightAndMove</Name>
+      <Name>SimilarHighlight</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

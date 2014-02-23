@@ -12,10 +12,10 @@ using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Utilities;
 
 
-namespace HighlightAndMove
+namespace SimilarHighlight
 {
-    internal class HighlightWordTag : TextMarkerTag
+    internal class HLTextTag : TextMarkerTag
     {
-        public HighlightWordTag() : base("MarkerFormatDefinition/HighlightWordFormatDefinition") { }
+        public HLTextTag() : base("MarkerFormatDefinition/HLWordFormatDefinition") { }
     }
 }

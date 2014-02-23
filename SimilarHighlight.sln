@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HighlightAndMove", "HighlightAndMove\HighlightAndMove.csproj", "{913AC4C7-B0EC-4E16-AD25-637395F1B93C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimilarHighlight", "SimilarHighlight\SimilarHighlight.csproj", "{913AC4C7-B0EC-4E16-AD25-637395F1B93C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HighlightAndMove.Tests", "HighlightAndMove.Tests\HighlightAndMove.Tests.csproj", "{CE69FD4A-CFC9-47B6-BBD9-C0D865189B86}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimilarHighlight.Tests", "SimilarHighlight.Tests\SimilarHighlight.Tests.csproj", "{CE69FD4A-CFC9-47B6-BBD9-C0D865189B86}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{7E115E32-2418-4043-8631-E4AD9673A9F2}"
 	ProjectSection(SolutionItems) = preProject

@@ -24,9 +24,9 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 
-namespace HighlightAndMove
+namespace SimilarHighlight
 {
-    internal class HighlightWordTagger : ITagger<HighlightWordTag>
+    internal class HLTextTagger : ITagger<HLTextTag>
     {
         IWpfTextView View { get; set; }
         ITextBuffer SourceBuffer { get; set; }
@@ -35,7 +35,8 @@ namespace HighlightAndMove
         NormalizedSnapshotSpanCollection WordSpans { get; set; }
         SnapshotSpan? CurrentWord { get; set; }
         EnvDTE.Document document { get; set; }
-        object updateLock = new object();
+        private object updateLock = new object();
+        private object buildLock = new object();
 
         // location datas 
         IEnumerable<LocationInfo> locations { get; set; }
@@ -56,7 +57,7 @@ namespace HighlightAndMove
         CSharpProcessorUsingAntlr3 processor;
         List<XElement> tokenElements { get; set; }
 
-        public HighlightWordTagger(IWpfTextView view, ITextBuffer sourceBuffer, ITextSearchService textSearchService,
+        public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, ITextSearchService textSearchService,
 ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
             if (document == null)
@@ -103,7 +104,6 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             if (this.processor == null)
             {
                 this.processor = new Code2Xml.Languages.ANTLRv3.Processors.CSharp.CSharpProcessorUsingAntlr3();
-
 
                 //var elements = xml.Descendants("identifier").ToList();
                 //// Get the data list of TOKEN
@@ -164,18 +164,15 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
                     List<SnapshotSpan> wordSpans = new List<SnapshotSpan>();
                     currentRange = GetCodeRangeBySelection(CurrentWordForCheck);
-                    Stopwatch sw = new Stopwatch();
-                    sw.Start();
-                    XElement rootElement = processor.GenerateXml(source_code);
-                    sw.Stop();
-                    Debug.WriteLine("(total cost " + (sw.ElapsedMilliseconds).ToString() + " seconds)");
 
-                    sw.Reset();
-                
-                    sw.Start();
-                    XElement currentElement = currentRange.FindOutermostElement(rootElement);
-                    sw.Stop();
-                    Debug.WriteLine("(total cost " + (sw.ElapsedMilliseconds).ToString() + " seconds)");
+                    TimeWatch.Init();
+                    TimeWatch.Start();
+                    var rootElement = processor.GenerateXml(source_code);
+                    TimeWatch.Stop("GenerateXml");
+
+                    TimeWatch.Start();
+                    var currentElement = currentRange.FindOutermostElement(rootElement);
+                    TimeWatch.Stop("FindOutermostElement");
 
                     // It will compare two elements by default.
                     if (locations == null || locations.Count<LocationInfo>() == 2)
@@ -218,9 +215,9 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                         // Get the similar Elements
                         var ret = Inferrer.GetSimilarElements(processor, locations,
                              rootElement);
-                        sw.Reset();
 
-                        sw.Start();
+
+                        TimeWatch.Start();
                         // If no similar element is found then nothing will be highlighted.
                         if (ret.Count() == 0 || ret.First().Item1 == 0)
                         {
@@ -232,21 +229,26 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                         WordSpans = null;
                         CurrentSelectNum = 0;
 
-                        Parallel.ForEach(ret, tuple =>
+                        // Show the similar nodes
+                        foreach (var tuple in ret.Take(10))
                         {
-                            // Build the collecton of similar elements
-                            BuildSimilarElementsCollection(tuple, startOffset, endOffset);
+                            var score = tuple.Item1;
+                            var location = tuple.Item2;
+                            var startAndEnd = location.CodeRange.ConvertToIndicies(source_code);
+                            var fragment = source_code.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1);
+                            Console.WriteLine("Similarity: " + score + ", code: " + fragment);
+                        }           
 
-                            //var score = tuple.Item1;
-                            //var location = tuple.Item2;
-                            //var startAndEnd = location.CodeRange.ConvertToIndicies(source_code);
-                            //var fragment = source_code.Substring(startAndEnd.Item1 + startOffset, startAndEnd.Item2 - startAndEnd.Item1 - startOffset - endOffset);
-                            //       Debug.WriteLine("Similarity: " + score + ", code: " + fragment);
-                            //       Console.WriteLine("Similarity: " + score + ", code: " + fragment);
-                        });
+                        //Parallel.ForEach(ret, tuple =>
+                        //{
+                        //    lock (buildLock)
+                        //    {
+                        //        // Build the collecton of similar elements
+                        //        BuildSimilarElementsCollection(tuple, startOffset, endOffset);
+                        //    }
+                        //});
 
-                        sw.Stop();
-                        Debug.WriteLine("(total cost " + (sw.ElapsedMilliseconds).ToString() + " seconds)");
+                        TimeWatch.Stop("BuildSimilarElementsCollection");
 
                         if (newSpanAll.Count == 0)
                         {
@@ -320,6 +322,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 }
             }
 
+            #region
             //// Exist check
             //var check = tokenElements.FindAll(el => el.Value == RequestSelection.Text &&
             //    el.Attribute("startline").Value == RequestSelection.TopPoint.Line.ToString() &&
@@ -336,6 +339,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             //        currentRange = CodeRange.Locate(anceIdentifiers[0]);
             //    }                
             //}
+            #endregion
 
             return true;
         }
@@ -421,7 +425,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
-        public IEnumerable<ITagSpan<HighlightWordTag>> GetTags(NormalizedSnapshotSpanCollection spans)
+        public IEnumerable<ITagSpan<HLTextTag>> GetTags(NormalizedSnapshotSpanCollection spans)
         {
             if (CurrentWord == null)
                 yield break;
@@ -453,7 +457,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             // Second, yield all the other words in the file
             foreach (SnapshotSpan span in NormalizedSnapshotSpanCollection.Overlap(spans, wordSpans))
             {
-                yield return new TagSpan<HighlightWordTag>(span, new HighlightWordTag());
+                yield return new TagSpan<HLTextTag>(span, new HLTextTag());
             }
         }
 

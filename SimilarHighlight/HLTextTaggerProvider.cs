@@ -15,12 +15,12 @@ using EnvDTE;
 using EnvDTE80;
 using System.Diagnostics;
 
-namespace HighlightAndMove
+namespace SimilarHighlight
 {
     [Export(typeof(IViewTaggerProvider))]
     [ContentType("text")]
     [TagType(typeof(TextMarkerTag))]
-    internal class HighlightWordTaggerProvider : IViewTaggerProvider
+    internal class HLTextTaggerProvider : IViewTaggerProvider
     {
         [Import]
         internal ITextSearchService TextSearchService { get; set; }
@@ -73,7 +73,7 @@ namespace HighlightAndMove
             ITextStructureNavigator textStructureNavigator =
                 TextStructureNavigatorSelector.GetTextStructureNavigator(buffer);
 
-            return new HighlightWordTagger(textView as IWpfTextView, buffer, TextSearchService, textStructureNavigator, nowDocument) as ITagger<T>;
+            return new HLTextTagger(textView as IWpfTextView, buffer, TextSearchService, textStructureNavigator, nowDocument) as ITagger<T>;
         }
     }
 }

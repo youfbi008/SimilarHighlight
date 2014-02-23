@@ -11,14 +11,14 @@ using Microsoft.VisualStudio.Text.Operations;
 using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Utilities;
 
-namespace HighlightAndMove
+namespace SimilarHighlight
 {
     [Export(typeof(EditorFormatDefinition))]
-    [Name("MarkerFormatDefinition/HighlightWordFormatDefinition")]
+    [Name("MarkerFormatDefinition/HLTextFormatDefinition")]
     [UserVisible(true)]
-    internal class HighlightWordFormatDefinition : MarkerFormatDefinition
+    internal class HLTextFormatDefinition : MarkerFormatDefinition
     {
-        public HighlightWordFormatDefinition()
+        public HLTextFormatDefinition()
         {
             this.BackgroundColor = Colors.LightBlue;
             this.ForegroundColor = Colors.DarkBlue;
