@@ -238,7 +238,7 @@ namespace SimilarHighlight
 
                 TimeWatch.Start();
 
-                var aa = candidates.AsParallel().SelectMany(
+                var ret = candidates.AsParallel().SelectMany(
                         kv =>
                         {
                             return kv.Select(
@@ -261,7 +261,7 @@ namespace SimilarHighlight
                     // Sort candidate nodes using the similarities
                         .OrderByDescending(t => t.Item1).ToList();
                 TimeWatch.Stop("FindOutSimilarElements");
-                return aa;
+                return ret;
             }
             catch (Exception exc)
             {

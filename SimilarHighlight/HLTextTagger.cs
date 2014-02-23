@@ -142,7 +142,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
             if (RequestSelection.Text.Trim() != "")// || RequestSelection.Text.Length > 100
             {
-                try{
+                try
+                {
                     // When the target file is edited and not saved, the position of selection is different from befrore.
                     // TODO I will compare the 
                     TextDocument currentTextDoc = document.Object("TextDocument");
@@ -191,7 +192,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
                         // When selected word is between double quotation marks
                         List<XElement> tokenElements = currentElement.DescendantsAndSelf().Where(el => el.IsToken()).ToList();
-                    
+
                         Regex regex = new Regex("\"(.*)\"");
                         // the forward offset 
                         int startOffset = 0;
@@ -202,7 +203,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                         {
                             List<XElement> firstTokenElements = locations.First().XElement.DescendantsAndSelf().Where(el => el.IsToken()).ToList();
                             if (firstTokenElements.Count() == 1 && regex.IsMatch(firstTokenElements[0].TokenText()))
-                            { 
+                            {
                                 startOffset = 1;
                                 endOffset = 1;
                             }
@@ -211,7 +212,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                         // Set the threshold value of similarity.                    
                         //Inferrer.SimilarityRange = 10;
 
-                    
+
                         // Get the similar Elements
                         var ret = Inferrer.GetSimilarElements(processor, locations,
                              rootElement);
@@ -229,24 +230,14 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                         WordSpans = null;
                         CurrentSelectNum = 0;
 
-                        // Show the similar nodes
-                        foreach (var tuple in ret.Take(10))
+                        Parallel.ForEach(ret, tuple =>
                         {
-                            var score = tuple.Item1;
-                            var location = tuple.Item2;
-                            var startAndEnd = location.CodeRange.ConvertToIndicies(source_code);
-                            var fragment = source_code.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1);
-                            Console.WriteLine("Similarity: " + score + ", code: " + fragment);
-                        }           
-
-                        //Parallel.ForEach(ret, tuple =>
-                        //{
-                        //    lock (buildLock)
-                        //    {
-                        //        // Build the collecton of similar elements
-                        //        BuildSimilarElementsCollection(tuple, startOffset, endOffset);
-                        //    }
-                        //});
+                            lock (buildLock)
+                            {
+                                // Build the collecton of similar elements
+                                BuildSimilarElementsCollection(tuple, startOffset, endOffset);
+                            }
+                        });
 
                         TimeWatch.Stop("BuildSimilarElementsCollection");
 
@@ -274,7 +265,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                             SynchronousUpdate(CurrentSelection, new NormalizedSnapshotSpanCollection(wordSpans), CurrentWordForCheck);
                     }
                 }
-                catch(Exception exc) {
+                catch (Exception exc)
+                {
                     Debug.Write(exc.ToString());
                 }
             }
@@ -439,13 +431,13 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 yield break;
 
             // If the requested snapshot isn't the same as the one our words are on, translate our spans to the expected snapshot
-            if (spans[0].Snapshot != wordSpans[0].Snapshot)
-            {
-                wordSpans = new NormalizedSnapshotSpanCollection(
-                    wordSpans.AsParallel().Select(span => span.TranslateTo(spans[0].Snapshot, SpanTrackingMode.EdgeExclusive)));
+            //if (spans[0].Snapshot != wordSpans[0].Snapshot)
+            //{
+            //    wordSpans = new NormalizedSnapshotSpanCollection(
+            //        wordSpans.Select(span => span.TranslateTo(spans[0].Snapshot, SpanTrackingMode.EdgeExclusive)));
 
-                currentWord = currentWord.TranslateTo(spans[0].Snapshot, SpanTrackingMode.EdgeExclusive);
-            }
+            //    currentWord = currentWord.TranslateTo(spans[0].Snapshot, SpanTrackingMode.EdgeExclusive);
+            //}
 
             // First, yield back the word the cursor is under (if it overlaps)
             // Note that we'll yield back the same word again in the wordspans collection;
