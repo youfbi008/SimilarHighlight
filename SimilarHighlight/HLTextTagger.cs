@@ -54,7 +54,7 @@ namespace SimilarHighlight
         // the order number of current selection in highlighted elements
         int CurrentSelectNum { get; set; }
         // the position data collecton of highlighted elements
-        ICollection<Tuple<int, int>> newSelectionAll { get; set; }
+        ICollection<Tuple<int, int, int>> newSelectionAll { get; set; }
         Processor processor;
         List<XElement> tokenElements { get; set; }
         // Whether the similar elements are needed to fix.
@@ -153,12 +153,12 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 {
                     // When the target file is edited and not saved, the position of selection is different from befrore.
                     // TODO I will compare the 
-                    TextDocument currentTextDoc = document.Object("TextDocument");
+                    var currentTextDoc = document.Object("TextDocument");
                     source_code = currentTextDoc.StartPoint.CreateEditPoint().GetText(currentTextDoc.EndPoint);
 
-                    TextSelection CurrentSelection = RequestSelection;
+                    var CurrentSelection = RequestSelection;
 
-                    CodeRange currentRange = new CodeRange();
+                    var currentRange = new CodeRange();
 
                     // Validation Check
                     if (!IsValidSelection())//ref currentRange) || currentRange == null
@@ -166,11 +166,10 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                         return;
                     }
 
-                    SnapshotPoint currentStart = ConvertToPosition(RequestSelection.TopPoint);
-                    SnapshotPoint currentEnd = ConvertToPosition(RequestSelection.BottomPoint);
+                    var currentStart = ConvertToPosition(RequestSelection.TopPoint);
+                    var currentEnd = ConvertToPosition(RequestSelection.BottomPoint);
                     CurrentWordForCheck = new SnapshotSpan(currentStart, currentEnd);
 
-                    List<SnapshotSpan> wordSpans = new List<SnapshotSpan>();
                     currentRange = GetCodeRangeBySelection(CurrentWordForCheck);
 
                     TimeWatch.Init();
@@ -184,14 +183,14 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
                     if (isNeedFix == false)
                     {
-                        Regex regex = new Regex("\"(.*)\"");
+                        var regex = new Regex("\"(.*)\"");
                         // the forward offset 
                         int startOffset = 1;
                         // the backward offset
                         int endOffset = 1;
                         
                         // When selected word is between double quotation marks
-                        List<XElement> tokenElements = currentElement.DescendantsAndSelf().Where(el => el.IsToken()).ToList();
+                        var tokenElements = currentElement.DescendantsAndSelf().Where(el => el.IsToken()).ToList();
                         if (tokenElements.Count() == 1 && tokenElements[0].TokenText().Length != RequestSelection.Text.Length
                                && regex.IsMatch(tokenElements[0].TokenText()))
                         {
@@ -212,8 +211,14 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     }
                     else
                     {
-                        // reset the judgement
-                        isNeedFix = false;
+                        // reset the judgement                        
+                        if (isNeedFix == true)
+                        {
+                            isNeedFix = false;
+                        }
+                        else {
+                            fixKit = null;
+                        }
 
                         locations = locations.Concat(new[] {new LocationInfo {
                             CodeRange = currentRange,
@@ -234,9 +239,9 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                             return;
                         }
 
+                        var wordSpans = new List<SnapshotSpan>();
                         newSpanAll = new List<SnapshotSpan>();
-                        newSelectionAll = new List<Tuple<int, int>>();
-                        WordSpans = null;
+                        newSelectionAll = new List<Tuple<int, int, int>>();
                         CurrentSelectNum = 0;
 
                         Parallel.ForEach(ret, tuple =>
@@ -260,8 +265,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
                         // Get the order number of current selection in the highlighted elements
                         var curSelection = newSelectionAll.AsParallel().Select((item, index) => new { Item = item, Index = index })
-                            .First(sel => sel.Item.Item1 <= RequestSelection.TopPoint.AbsoluteCharOffset &&
-                            sel.Item.Item2 >= RequestSelection.BottomPoint.AbsoluteCharOffset
+                            .First(sel => (sel.Item.Item1 <= RequestSelection.TopPoint.AbsoluteCharOffset &&
+                            sel.Item.Item2 >= RequestSelection.BottomPoint.AbsoluteCharOffset) || sel.Item.Item3 == RequestSelection.TopPoint.Line - 1
                             );
 
                         if (curSelection != null)
@@ -288,12 +293,12 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 if (e.Key == Key.Left)
                 {
                     // go to the previous highlighted element
-                    MoveSelection("bwd");
+                    MoveSelection("PREV");
                 }
                 else if (e.Key == Key.Right)
                 {
                     // go to the next highlighted element
-                    MoveSelection("fwd");
+                    MoveSelection("NEXT");
                 }
             }
         }
@@ -313,8 +318,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             // Repeat check   
             if (this.CurrentWordForCheck != null)
             {
-                SnapshotPoint currentStart = ConvertToPosition(RequestSelection.TopPoint);
-                SnapshotPoint currentEnd = ConvertToPosition(RequestSelection.BottomPoint);
+                var currentStart = ConvertToPosition(RequestSelection.TopPoint);
+                var currentEnd = ConvertToPosition(RequestSelection.BottomPoint);
 
                 if (locations != null && locations.Count<LocationInfo>() == 1 && 
                     currentStart.Position == ((SnapshotSpan)this.CurrentWordForCheck).Start.Position &&
@@ -371,11 +376,11 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             return point.Position - lineNum + 1;
         }
 
-        void BuildSimilarElementsCollection(Tuple<int, LocationInfo> tuple, Tuple<Regex, Tuple<int, int>> fixKit)
+        void BuildSimilarElementsCollection(Tuple<int, CodeRange> tuple, Tuple<Regex, Tuple<int, int>> fixKit)
         {
 
             // build the collecton of similar elements
-            var startAndEnd = tuple.Item2.CodeRange.ConvertToIndicies(source_code);
+            var startAndEnd = tuple.Item2.ConvertToIndicies(source_code);
 
             SnapshotPoint tmpStart;
             SnapshotPoint tmpEnd;
@@ -389,13 +394,13 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 tmpEnd = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item2);
             }
 
-            SnapshotSpan s_span = new SnapshotSpan(tmpStart, tmpEnd);            
+            var s_span = new SnapshotSpan(tmpStart, tmpEnd);            
 
             newSpanAll.Add(s_span);
 
             // build the position data collecton of highlighted elements
-            Tuple<int, int> tmpSelection = new Tuple<int, int>(
-                ConvertToCharOffset(tmpStart), ConvertToCharOffset(tmpEnd));
+            var tmpSelection = new Tuple<int, int, int>(
+                ConvertToCharOffset(tmpStart), ConvertToCharOffset(tmpEnd), this.View.TextSnapshot.GetLineNumberFromPosition(tmpStart.Position));
             newSelectionAll.Add(tmpSelection);
         }
 
@@ -424,8 +429,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
             // Hold on to a "snapshot" of the word spans and current word, so that we maintain the same
             // collection throughout
-            SnapshotSpan currentWord = CurrentWord.Value;
-            NormalizedSnapshotSpanCollection wordSpans = WordSpans;
+            var currentWord = CurrentWord.Value;
+            var wordSpans = WordSpans;
 
             if (spans.Count == 0 || WordSpans.Count == 0)
                 yield break;
@@ -456,11 +461,11 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         private void MoveSelection(string selectType)
         {
 
-            TextSelection selected = this.document.Selection;
+            var selected = this.document.Selection;
 
             if (selected != null)
             {
-                if (selectType == "fwd")
+                if (selectType == "NEXT")
                 {
                     CurrentSelectNum = CurrentSelectNum + 1;
                     if (newSelectionAll.Count() <= CurrentSelectNum)
@@ -468,12 +473,12 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                         CurrentSelectNum = newSelectionAll.Count() - 1;
                         return;
                     }
-                    Tuple<int, int> newSelection = newSelectionAll.ElementAt(CurrentSelectNum);
+                    var newSelection = newSelectionAll.ElementAt(CurrentSelectNum);
 
                     selected.MoveToAbsoluteOffset(newSelection.Item1, false);
                     selected.MoveToAbsoluteOffset(newSelection.Item2, true);
                 }
-                else if (selectType == "bwd")
+                else if (selectType == "PREV")
                 {
 
                     CurrentSelectNum = CurrentSelectNum - 1;
@@ -484,7 +489,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                         return;
                     }
 
-                    Tuple<int, int> newSelection = newSelectionAll.ElementAt(CurrentSelectNum);
+                    var newSelection = newSelectionAll.ElementAt(CurrentSelectNum);
 
                     selected.MoveToAbsoluteOffset(newSelection.Item1, false);
                     selected.MoveToAbsoluteOffset(newSelection.Item2, true);

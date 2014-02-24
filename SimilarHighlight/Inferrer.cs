@@ -187,7 +187,7 @@ namespace SimilarHighlight
                     .ToHashSet();
         }
 
-        public static IEnumerable<Tuple<int, LocationInfo>> GetSimilarElements(
+        public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
                 Processor processor, IEnumerable<LocationInfo> locations, XElement root,
                 int range = 5, bool inner = true, bool outer = true)
         {
@@ -222,7 +222,7 @@ namespace SimilarHighlight
 
                 if (SimilarityRange == 0 && keysCount != 0)
                 {
-                    similarityRange = keysCount / 10;
+                    similarityRange = keysCount / 6;
                 }
                 else
                 {
@@ -231,7 +231,7 @@ namespace SimilarHighlight
 
                 if (commonKeys.Count <= similarityRange)
                 {
-                    return Enumerable.Empty<Tuple<int, LocationInfo>>();
+                    return Enumerable.Empty<Tuple<int, CodeRange>>();
                 }
 
                 int minSimilarity = commonKeys.Count - similarityRange;
@@ -252,11 +252,8 @@ namespace SimilarHighlight
                                     .Select(
                                             t => Tuple.Create(
                                                     t.Item1,	// Indicates the simlarity
-                                                    new LocationInfo
-                                                    {
-                                                        //       XElement xx = 
-                                                        CodeRange = CodeRange.Locate(t.Item2),
-                                                    }));
+                                                    CodeRange.Locate(t.Item2)
+                                                    ));
                         })
                     // Sort candidate nodes using the similarities
                         .OrderByDescending(t => t.Item1).ToList();
