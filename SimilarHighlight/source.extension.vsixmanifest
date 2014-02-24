@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
 	<Metadata>
-		<Identity Id="SimilarHighlight.Microsoft.1747f18e-0b0e-45b2-9a06-7348a55e3dc7" Version="1.2" Language="en-US" Publisher="Microsoft" />
+		<Identity Id="SimilarHighlight.Microsoft.1747f18e-0b0e-45b2-9a06-7348a55e3dc7" Version="0.9" Language="en-US" Publisher="Microsoft" />
 		<DisplayName>SimilarHighlight</DisplayName>
 		<Description xml:space="preserve">Highlight all similar elements by selecting text twice. Then the current cursor can be moved onto other element of the similar elements by shortcuts.</Description>
 		<Icon>ICONsnapshot.jpg</Icon>

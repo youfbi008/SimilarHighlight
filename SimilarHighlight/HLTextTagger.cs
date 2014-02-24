@@ -22,6 +22,7 @@ using System.Xml;
 using Code2Xml.Languages.ANTLRv3.Processors.CSharp;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Code2Xml.Languages.ANTLRv3.Processors.Java;
 
 
 namespace SimilarHighlight
@@ -54,8 +55,11 @@ namespace SimilarHighlight
         int CurrentSelectNum { get; set; }
         // the position data collecton of highlighted elements
         ICollection<Tuple<int, int>> newSelectionAll { get; set; }
-        CSharpProcessorUsingAntlr3 processor;
+        Processor processor;
         List<XElement> tokenElements { get; set; }
+        // Whether the similar elements are needed to fix.
+        bool isNeedFix = false;
+        Tuple<Regex, Tuple<int, int>> fixKit = null;
 
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, ITextSearchService textSearchService,
 ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
@@ -103,11 +107,14 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             this.document = document;
             if (this.processor == null)
             {
-                this.processor = new Code2Xml.Languages.ANTLRv3.Processors.CSharp.CSharpProcessorUsingAntlr3();
-
-                //var elements = xml.Descendants("identifier").ToList();
-                //// Get the data list of TOKEN
-                //this.tokenElements = elements.Descendants("TOKEN").ToList();
+                switch (Path.GetExtension(document.FullName).ToUpper()) {
+                    case ".JAVA":
+                        this.processor = new Code2Xml.Languages.ANTLRv3.Processors.Java.JavaProcessorUsingAntlr3();
+                        break;
+                    default:
+                        this.processor = new Code2Xml.Languages.ANTLRv3.Processors.CSharp.CSharpProcessorUsingAntlr3();
+                        break;
+                }
             }
 
             this.cntLeftClick = 0;
@@ -175,48 +182,50 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     var currentElement = currentRange.FindOutermostElement(rootElement);
                     TimeWatch.Stop("FindOutermostElement");
 
+                    if (isNeedFix == false)
+                    {
+                        Regex regex = new Regex("\"(.*)\"");
+                        // the forward offset 
+                        int startOffset = 1;
+                        // the backward offset
+                        int endOffset = 1;
+                        
+                        // When selected word is between double quotation marks
+                        List<XElement> tokenElements = currentElement.DescendantsAndSelf().Where(el => el.IsToken()).ToList();
+                        if (tokenElements.Count() == 1 && tokenElements[0].TokenText().Length != RequestSelection.Text.Length
+                               && regex.IsMatch(tokenElements[0].TokenText()))
+                        {
+                            isNeedFix = true;
+                            fixKit = Tuple.Create(regex,
+                                                Tuple.Create(startOffset, endOffset));
+                        }
+                    }
+
                     // It will compare two elements by default.
                     if (locations == null || locations.Count<LocationInfo>() == 2)
                     {
+                        
                         locations = new[] {new LocationInfo {
                             CodeRange = currentRange,
                             XElement = currentElement,
-			            }};
+			            }};                        
                     }
                     else
                     {
+                        // reset the judgement
+                        isNeedFix = false;
+
                         locations = locations.Concat(new[] {new LocationInfo {
                             CodeRange = currentRange,
                             XElement = currentElement,
 			            }});
-
-                        // When selected word is between double quotation marks
-                        List<XElement> tokenElements = currentElement.DescendantsAndSelf().Where(el => el.IsToken()).ToList();
-
-                        Regex regex = new Regex("\"(.*)\"");
-                        // the forward offset 
-                        int startOffset = 0;
-                        // the backward offset
-                        int endOffset = 0;
-                        if (tokenElements.Count() == 1 && tokenElements[0].TokenText().Length != RequestSelection.Text.Length
-                            && regex.IsMatch(tokenElements[0].TokenText()))
-                        {
-                            List<XElement> firstTokenElements = locations.First().XElement.DescendantsAndSelf().Where(el => el.IsToken()).ToList();
-                            if (firstTokenElements.Count() == 1 && regex.IsMatch(firstTokenElements[0].TokenText()))
-                            {
-                                startOffset = 1;
-                                endOffset = 1;
-                            }
-                        }
-
+         
                         // Set the threshold value of similarity.                    
                         //Inferrer.SimilarityRange = 10;
-
 
                         // Get the similar Elements
                         var ret = Inferrer.GetSimilarElements(processor, locations,
                              rootElement);
-
 
                         TimeWatch.Start();
                         // If no similar element is found then nothing will be highlighted.
@@ -235,7 +244,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                             lock (buildLock)
                             {
                                 // Build the collecton of similar elements
-                                BuildSimilarElementsCollection(tuple, startOffset, endOffset);
+                                BuildSimilarElementsCollection(tuple, fixKit);
                             }
                         });
 
@@ -307,7 +316,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 SnapshotPoint currentStart = ConvertToPosition(RequestSelection.TopPoint);
                 SnapshotPoint currentEnd = ConvertToPosition(RequestSelection.BottomPoint);
 
-                if (currentStart.Position == ((SnapshotSpan)this.CurrentWordForCheck).Start.Position &&
+                if (locations != null && locations.Count<LocationInfo>() == 1 && 
+                    currentStart.Position == ((SnapshotSpan)this.CurrentWordForCheck).Start.Position &&
                     currentEnd.Position == ((SnapshotSpan)this.CurrentWordForCheck).End.Position)
                 {
                     return false;
@@ -361,15 +371,25 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             return point.Position - lineNum + 1;
         }
 
-        void BuildSimilarElementsCollection(Tuple<int, LocationInfo> tuple, int startOffset, int endOffset)
+        void BuildSimilarElementsCollection(Tuple<int, LocationInfo> tuple, Tuple<Regex, Tuple<int, int>> fixKit)
         {
 
             // build the collecton of similar elements
             var startAndEnd = tuple.Item2.CodeRange.ConvertToIndicies(source_code);
 
-            SnapshotPoint tmpStart = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item1 + startOffset);
-            SnapshotPoint tmpEnd = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item2 - endOffset);
-            SnapshotSpan s_span = new SnapshotSpan(tmpStart, tmpEnd);
+            SnapshotPoint tmpStart;
+            SnapshotPoint tmpEnd;
+            if (fixKit != null && fixKit.Item1.IsMatch(source_code.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1)))
+            {   
+                tmpStart = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item1 + fixKit.Item2.Item1);
+                tmpEnd = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item2 - fixKit.Item2.Item2);
+            }
+            else {
+                tmpStart = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item1);
+                tmpEnd = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item2);
+            }
+
+            SnapshotSpan s_span = new SnapshotSpan(tmpStart, tmpEnd);            
 
             newSpanAll.Add(s_span);
 
@@ -377,26 +397,6 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             Tuple<int, int> tmpSelection = new Tuple<int, int>(
                 ConvertToCharOffset(tmpStart), ConvertToCharOffset(tmpEnd));
             newSelectionAll.Add(tmpSelection);
-        }
-        static bool WordExtentIsValid(SnapshotPoint currentRequest, TextExtent word)
-        {
-            return word.IsSignificant
-                && currentRequest.Snapshot.GetText(word.Span).Any(c => char.IsLetter(c));
-        }
-
-        private SnapshotSpan? GetExpectedSpan(SnapshotSpan tmpSpan, FindData findData)
-        {
-
-            SnapshotSpan? endSpan = ((ITextSearchService2)TextSearchService).Find(tmpSpan.End, findData.SearchString, findData.FindOptions);
-
-            if (endSpan == null)
-            {
-
-                return null;
-            }
-            SnapshotSpan expectedSpan = new SnapshotSpan(tmpSpan.End, ((SnapshotSpan)endSpan).Start);
-
-            return expectedSpan;
         }
 
         void SynchronousUpdate(TextSelection CurrentSelection, NormalizedSnapshotSpanCollection newSpans, SnapshotSpan? newCurrentWord)
@@ -431,26 +431,26 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 yield break;
 
             // If the requested snapshot isn't the same as the one our words are on, translate our spans to the expected snapshot
-            //if (spans[0].Snapshot != wordSpans[0].Snapshot)
-            //{
-            //    wordSpans = new NormalizedSnapshotSpanCollection(
-            //        wordSpans.Select(span => span.TranslateTo(spans[0].Snapshot, SpanTrackingMode.EdgeExclusive)));
+            if (spans[0].Snapshot != wordSpans[0].Snapshot)
+            {
+                wordSpans = new NormalizedSnapshotSpanCollection(
+                    wordSpans.Select(span => span.TranslateTo(spans[0].Snapshot, SpanTrackingMode.EdgeExclusive)));
 
-            //    currentWord = currentWord.TranslateTo(spans[0].Snapshot, SpanTrackingMode.EdgeExclusive);
-            //}
+                currentWord = currentWord.TranslateTo(spans[0].Snapshot, SpanTrackingMode.EdgeExclusive);
+            }
 
             // First, yield back the word the cursor is under (if it overlaps)
             // Note that we'll yield back the same word again in the wordspans collection;
             // the duplication here is expected.
             // It's not necessary for current needs.
-            //if (spans.OverlapsWith(new NormalizedSnapshotSpanCollection(currentWord)))
-            //    yield return new TagSpan<HighlightWordTag>(currentWord, new HighlightWordTag());
+            if (spans.OverlapsWith(new NormalizedSnapshotSpanCollection(currentWord)))
+                yield return new TagSpan<HLTextTag>(currentWord, new HLTextTag());
 
             // Second, yield all the other words in the file
             foreach (SnapshotSpan span in NormalizedSnapshotSpanCollection.Overlap(spans, wordSpans))
             {
                 yield return new TagSpan<HLTextTag>(span, new HLTextTag());
-            }
+            }            
         }
 
         private void MoveSelection(string selectType)
