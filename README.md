@@ -12,6 +12,12 @@ And, you can press `Ctrl + Alt + <-` to make the the previous similar element se
 Now, you can download the extension from Visual Studio Gallery(the url of the next line).  
 http://visualstudiogallery.msdn.microsoft.com/847a1d58-cc6e-4c42-b2a8-54f35af1c7f9
 
+# Supported Languages  
+
+* C#(.cs)
+* JAVA(.java)
+We will try to make it support other languages in future.
+
 # Requirements  
 
 * Visual Studio 2012 SDK  
