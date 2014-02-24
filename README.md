@@ -14,9 +14,9 @@ http://visualstudiogallery.msdn.microsoft.com/5b2a1ed1-3514-4786-8a83-a7d82c3a33
 
 # Supported Languages  
 
-* C#(.cs)
-* JAVA(.java)
-We will try to make it support other languages in future.
+* C#(.cs)  
+* JAVA(.java)  
+We will try to make it support other languages in future.  
 
 # Requirements  
 
