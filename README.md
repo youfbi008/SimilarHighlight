@@ -10,7 +10,7 @@ You can press `Ctrl + Alt + ->` to make the next similar element selected.
 And, you can press `Ctrl + Alt + <-` to make the the previous similar element selected.  
 
 Now, you can download the extension from Visual Studio Gallery(the url of the next line).  
-http://visualstudiogallery.msdn.microsoft.com/847a1d58-cc6e-4c42-b2a8-54f35af1c7f9
+http://visualstudiogallery.msdn.microsoft.com/5b2a1ed1-3514-4786-8a83-a7d82c3a336a
 
 # Supported Languages  
 
