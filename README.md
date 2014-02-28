@@ -6,8 +6,10 @@ SimilarHighlight is a simple extension by the Managed Extensibility Framework.
 1.Highlight all similar elements by selecting text twice.  
 2.The current cursor can be move onto other element of the similar elements by shortcuts.  
 
-You can press `Ctrl + Alt + ->` to make the next similar element selected.  
-And, you can press `Ctrl + Alt + <-` to make the the previous similar element selected.  
+ShortKeys:
+* `Ctrl + Alt + ->` to make the next similar element selected.  
+* `Ctrl + Alt + <-` to make the previous similar element selected.  
+* `ESC` to make the highlighted elements return to normal.  
 
 Now, you can download the extension from Visual Studio Gallery(the url of the next line).  
 http://visualstudiogallery.msdn.microsoft.com/5b2a1ed1-3514-4786-8a83-a7d82c3a336a
@@ -20,6 +22,7 @@ We will try to make it support other languages in future.
 
 # Requirements  
 
+* NuGet You can install NuGet Package Manager with Extension Manager.
 * Visual Studio 2012 SDK  
 
 # How to debug

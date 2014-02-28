@@ -23,6 +23,7 @@ using Code2Xml.Languages.ANTLRv3.Processors.CSharp;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Code2Xml.Languages.ANTLRv3.Processors.Java;
+using System.Collections;
 
 
 namespace SimilarHighlight
@@ -39,12 +40,14 @@ namespace SimilarHighlight
         private object updateLock = new object();
         private object buildLock = new object();
 
+        // the highlighted elements will be saved when the text is changed.
+        NormalizedSnapshotSpanCollection TmpWordSpans { get; set; }
         // location datas 
         IEnumerable<LocationInfo> locations { get; set; }
         // the source code of current file
-        string source_code { get; set; }
+        string SourceCode { get; set; }
         // the collecton of highlighted elements
-        ICollection<SnapshotSpan> newSpanAll { get; set; }
+        List<SnapshotSpan> newSpanAll { get; set; }
         // Count the number of left mouse button clicks
         int cntLeftClick { get; set; }
         // current selection
@@ -53,8 +56,8 @@ namespace SimilarHighlight
         SnapshotSpan CurrentWordForCheck { get; set; }
         // the order number of current selection in highlighted elements
         int CurrentSelectNum { get; set; }
-        // the position data collecton of highlighted elements
-        ICollection<Tuple<int, int, int>> newSelectionAll { get; set; }
+        // the temp order number of current selection in highlighted elements
+        int TMPCurrentSelectNum { get; set; }
         Processor processor;
         List<XElement> tokenElements { get; set; }
         // Whether the similar elements are needed to fix.
@@ -111,6 +114,9 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     case ".JAVA":
                         this.processor = new Code2Xml.Languages.ANTLRv3.Processors.Java.JavaProcessorUsingAntlr3();
                         break;
+                    //case ".CBL":
+                    //    this.processor = new Code2Xml.Languages.ExternalProcessors.Processors.Cobol.Cobol85Processor();
+                    //    break;
                     default:
                         this.processor = new Code2Xml.Languages.ANTLRv3.Processors.CSharp.CSharpProcessorUsingAntlr3();
                         break;
@@ -127,6 +133,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             this.TextSearchService = textSearchService;
             this.TextStructureNavigator = textStructureNavigator;
             this.WordSpans = new NormalizedSnapshotSpanCollection();
+            this.TmpWordSpans = new NormalizedSnapshotSpanCollection();
             this.CurrentWord = null;
             //         this.View.Caret.PositionChanged += CaretPositionChanged;
             //     this.View.LayoutChanged += ViewLayoutChanged;
@@ -145,6 +152,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             else
             {
                 RequestSelection = this.document.Selection;
+
             }
 
             if (RequestSelection.Text.Trim() != "")// || RequestSelection.Text.Length > 100
@@ -152,16 +160,19 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 try
                 {
                     // When the target file is edited and not saved, the position of selection is different from befrore.
-                    // TODO I will compare the 
                     var currentTextDoc = document.Object("TextDocument");
-                    source_code = currentTextDoc.StartPoint.CreateEditPoint().GetText(currentTextDoc.EndPoint);
+                    var tmpSource = currentTextDoc.StartPoint.CreateEditPoint().GetText(currentTextDoc.EndPoint);
+
+                    // If the source code was changed, the new source code will be readin.
+                    if (SourceCode == null || SourceCode != tmpSource)
+                    {
+                        SourceCode = tmpSource;
+                    }
 
                     var CurrentSelection = RequestSelection;
 
-                    var currentRange = new CodeRange();
-
                     // Validation Check
-                    if (!IsValidSelection())//ref currentRange) || currentRange == null
+                    if (!IsValidSelection())
                     {
                         return;
                     }
@@ -170,20 +181,20 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     var currentEnd = ConvertToPosition(RequestSelection.BottomPoint);
                     CurrentWordForCheck = new SnapshotSpan(currentStart, currentEnd);
 
-                    currentRange = GetCodeRangeBySelection(CurrentWordForCheck);
+                    var currentRange = GetCodeRangeBySelection(CurrentWordForCheck);
 
                     TimeWatch.Init();
                     TimeWatch.Start();
-                    var rootElement = processor.GenerateXml(source_code);
+                    var rootElement = processor.GenerateXml(SourceCode);
                     TimeWatch.Stop("GenerateXml");
 
                     TimeWatch.Start();
                     var currentElement = currentRange.FindOutermostElement(rootElement);
                     TimeWatch.Stop("FindOutermostElement");
 
+                    var regex = new Regex("\"(.*)\"");
                     if (isNeedFix == false)
-                    {
-                        var regex = new Regex("\"(.*)\"");
+                    {                        
                         // the forward offset 
                         int startOffset = 1;
                         // the backward offset
@@ -211,7 +222,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     }
                     else
                     {
-                        // reset the judgement                        
+                        // reset the judgement
                         if (isNeedFix == true)
                         {
                             isNeedFix = false;
@@ -225,7 +236,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                             XElement = currentElement,
 			            }});
          
-                        // Set the threshold value of similarity.                    
+                        // Set the threshold value of similarity.
                         //Inferrer.SimilarityRange = 10;
 
                         // Get the similar Elements
@@ -239,9 +250,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                             return;
                         }
 
-                        var wordSpans = new List<SnapshotSpan>();
                         newSpanAll = new List<SnapshotSpan>();
-                        newSelectionAll = new List<Tuple<int, int, int>>();
                         CurrentSelectNum = 0;
 
                         Parallel.ForEach(ret, tuple =>
@@ -260,14 +269,20 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                             return;
                         }
 
-                        wordSpans.AddRange(newSpanAll);
-                        newSelectionAll = newSelectionAll.OrderBy(sel => sel.Item1).ToList();
+                        NormalizedSnapshotSpanCollection wordSpan = new NormalizedSnapshotSpanCollection(newSpanAll);
 
-                        // Get the order number of current selection in the highlighted elements
-                        var curSelection = newSelectionAll.AsParallel().Select((item, index) => new { Item = item, Index = index })
-                            .First(sel => (sel.Item.Item1 <= RequestSelection.TopPoint.AbsoluteCharOffset &&
-                            sel.Item.Item2 >= RequestSelection.BottomPoint.AbsoluteCharOffset) || sel.Item.Item3 == RequestSelection.TopPoint.Line - 1
-                            );
+                        if (fixKit != null)
+                        {
+                            if (regex.IsMatch(CurrentWordForCheck.GetText()))
+                            {
+                                currentStart += 1;
+                                currentEnd -= 1;
+                            }
+                        }
+
+                        var curSelection = wordSpan.AsParallel().Select((item, index) => new { Item = item, Index = index })
+                                .First(sel => (sel.Item.Start <= currentStart &&
+                                sel.Item.End >= currentEnd));
 
                         if (curSelection != null)
                         {
@@ -276,7 +291,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
                         // If another change hasn't happened, do a real update
                         if (CurrentSelection == RequestSelection)
-                            SynchronousUpdate(CurrentSelection, new NormalizedSnapshotSpanCollection(wordSpans), CurrentWordForCheck);
+                            SynchronousUpdate(CurrentSelection, wordSpan, CurrentWordForCheck);
                     }
                 }
                 catch (Exception exc)
@@ -290,6 +305,9 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
             if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.LeftAlt))
             {
+                if (TmpWordSpans.Count() == 0) {
+                    return;
+                }
                 if (e.Key == Key.Left)
                 {
                     // go to the previous highlighted element
@@ -299,6 +317,19 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 {
                     // go to the next highlighted element
                     MoveSelection("NEXT");
+                }
+            }
+            else if (Keyboard.IsKeyDown(Key.Escape) || e.Key == Key.Escape)
+            {
+                // When the ESC key is pressed, the highlighting will be canceled.
+                if (WordSpans.Count() != 0)
+                {
+                    WordSpans = new NormalizedSnapshotSpanCollection();
+                    TmpWordSpans = new NormalizedSnapshotSpanCollection();
+                    CurrentSelectNum = 0;
+                    var tempEvent = TagsChanged;
+                    if (tempEvent != null)
+                        tempEvent(this, new SnapshotSpanEventArgs(new SnapshotSpan(SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
                 }
             }
         }
@@ -355,7 +386,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
 
             //  return null;
-            return CodeRange.ConvertFromIndicies(source_code, currentWord.Start.Position, currentWord.End.Position);
+            return CodeRange.ConvertFromIndicies(SourceCode, currentWord.Start.Position, currentWord.End.Position);
         }
 
         // convert TextSelection to SnapshotPoint
@@ -380,11 +411,11 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
 
             // build the collecton of similar elements
-            var startAndEnd = tuple.Item2.ConvertToIndicies(source_code);
+            var startAndEnd = tuple.Item2.ConvertToIndicies(SourceCode);
 
             SnapshotPoint tmpStart;
             SnapshotPoint tmpEnd;
-            if (fixKit != null && fixKit.Item1.IsMatch(source_code.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1)))
+            if (fixKit != null && fixKit.Item1.IsMatch(SourceCode.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1)))
             {   
                 tmpStart = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item1 + fixKit.Item2.Item1);
                 tmpEnd = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item2 - fixKit.Item2.Item2);
@@ -395,13 +426,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             }
 
             var s_span = new SnapshotSpan(tmpStart, tmpEnd);            
-
+            
             newSpanAll.Add(s_span);
-
-            // build the position data collecton of highlighted elements
-            var tmpSelection = new Tuple<int, int, int>(
-                ConvertToCharOffset(tmpStart), ConvertToCharOffset(tmpEnd), this.View.TextSnapshot.GetLineNumberFromPosition(tmpStart.Position));
-            newSelectionAll.Add(tmpSelection);
         }
 
         void SynchronousUpdate(TextSelection CurrentSelection, NormalizedSnapshotSpanCollection newSpans, SnapshotSpan? newCurrentWord)
@@ -414,6 +440,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 WordSpans = newSpans;
                 CurrentWord = newCurrentWord;
 
+                TmpWordSpans = WordSpans;
                 var tempEvent = TagsChanged;
                 if (tempEvent != null)
                     tempEvent(this, new SnapshotSpanEventArgs(new SnapshotSpan(SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
@@ -441,6 +468,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 wordSpans = new NormalizedSnapshotSpanCollection(
                     wordSpans.Select(span => span.TranslateTo(spans[0].Snapshot, SpanTrackingMode.EdgeExclusive)));
 
+                TmpWordSpans = wordSpans;
                 currentWord = currentWord.TranslateTo(spans[0].Snapshot, SpanTrackingMode.EdgeExclusive);
             }
 
@@ -450,50 +478,66 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             // It's not necessary for current needs.
             if (spans.OverlapsWith(new NormalizedSnapshotSpanCollection(currentWord)))
                 yield return new TagSpan<HLTextTag>(currentWord, new HLTextTag());
-
+            
             // Second, yield all the other words in the file
             foreach (SnapshotSpan span in NormalizedSnapshotSpanCollection.Overlap(spans, wordSpans))
             {
+                // TODO: Maybe the next element will be determined by the cursor in new screen.                
+                var curSelection = wordSpans.AsParallel().Select((item, index) => new { Item = item, Index = index })
+                                .First(sel => (sel.Item.Start <= span.Start &&
+                                sel.Item.End >= span.End));
+                
+                if (curSelection != null)
+                {
+                    var tmpindex = curSelection.Index;
+                    // If the new span which will be displayed is a long distance from the last selected element.
+                    if (tmpindex - CurrentSelectNum > 10 || CurrentSelectNum - tmpindex > 10)
+                        TMPCurrentSelectNum = tmpindex;
+                    else if ( tmpindex - CurrentSelectNum < 3 || CurrentSelectNum - tmpindex < 3) {
+                        CurrentSelectNum = TMPCurrentSelectNum;
+                    }
+                }
                 yield return new TagSpan<HLTextTag>(span, new HLTextTag());
             }            
         }
 
         private void MoveSelection(string selectType)
         {
+            bool blEdge = false;
+            if (TMPCurrentSelectNum != CurrentSelectNum)
+            {
+                CurrentSelectNum = TMPCurrentSelectNum;
+            }
+            if (selectType == "NEXT")
+            {
+                CurrentSelectNum += 1;
+                if (TmpWordSpans.Count() <= CurrentSelectNum)
+                {
+                    CurrentSelectNum = TmpWordSpans.Count() - 1;
+                    blEdge = true;
+                }
+            }
+            else if (selectType == "PREV")
+            {
+                CurrentSelectNum -= 1;
+
+                if (CurrentSelectNum < 0)
+                {
+                    CurrentSelectNum = 0;
+                    blEdge = true;
+                }
+            }
+            TMPCurrentSelectNum = CurrentSelectNum;
+
+            if (blEdge) return;
 
             var selected = this.document.Selection;
-
             if (selected != null)
             {
-                if (selectType == "NEXT")
-                {
-                    CurrentSelectNum = CurrentSelectNum + 1;
-                    if (newSelectionAll.Count() <= CurrentSelectNum)
-                    {
-                        CurrentSelectNum = newSelectionAll.Count() - 1;
-                        return;
-                    }
-                    var newSelection = newSelectionAll.ElementAt(CurrentSelectNum);
-
-                    selected.MoveToAbsoluteOffset(newSelection.Item1, false);
-                    selected.MoveToAbsoluteOffset(newSelection.Item2, true);
-                }
-                else if (selectType == "PREV")
-                {
-
-                    CurrentSelectNum = CurrentSelectNum - 1;
-
-                    if (CurrentSelectNum < 0)
-                    {
-                        CurrentSelectNum = 0;
-                        return;
-                    }
-
-                    var newSelection = newSelectionAll.ElementAt(CurrentSelectNum);
-
-                    selected.MoveToAbsoluteOffset(newSelection.Item1, false);
-                    selected.MoveToAbsoluteOffset(newSelection.Item2, true);
-                }
+                var newSpan = TmpWordSpans.ElementAt(CurrentSelectNum);
+                var newStartOffset = ConvertToCharOffset(newSpan.Start);
+                selected.MoveToAbsoluteOffset(newStartOffset, false);
+                selected.MoveToAbsoluteOffset(newStartOffset + newSpan.Length, true);
             }
         }
     }
