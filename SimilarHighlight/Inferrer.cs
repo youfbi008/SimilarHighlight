@@ -154,9 +154,17 @@ namespace SimilarHighlight
         {
             HashSet<string> commonKeys = null;
             keysCount = 0;
+            
             foreach (var element in elements)
             {
+                // Get the data collection of the surrounding nodes.
                 var keys = element.GetSurroundingKeys(length, inner, outer);
+                //int i = 0;
+                //foreach (var k in keys) {
+                //    Debug.WriteLine("[" + i + "]:" + k); i++;
+                //}
+
+                // Accumulate the number of the surrounding nodes.
                 keysCount += keys.Count();
                 if (commonKeys == null)
                 {
@@ -215,48 +223,61 @@ namespace SimilarHighlight
                         root.Descendants().AsParallel()
                                 .Where(e => names.Contains(e.Name())).ToList());
 
-                // Extract surrounding nodes from each candidate node
+                // Extract common surrounding nodes from the selected elements.
                 var commonKeys = elements.GetCommonKeys(range, true, true);
-
+                //int i = 0;
+                //foreach (var k in commonKeys)
+                //{
+                //    Debug.WriteLine("[" + i + "]:" + k); i++;
+                //}
                 TimeWatch.Stop("FindOutCandidateElements");
 
+                // Get the similarity range.
                 if (SimilarityRange == 0 && keysCount != 0)
                 {
+                    // TODO The better algorithm is expected.
                     similarityRange = keysCount / 6;
                 }
                 else
                 {
+                    // If the similarity is setted.
                     similarityRange = SimilarityRange;
                 }
 
+                // If the similarity is too small. 
                 if (commonKeys.Count <= similarityRange)
                 {
                     return Enumerable.Empty<Tuple<int, CodeRange>>();
                 }
 
+                // Get the similarity threshold.
                 int minSimilarity = commonKeys.Count - similarityRange;
 
                 TimeWatch.Start();
 
+                // Get the similar nodes collection. 
                 var ret = candidates.AsParallel().SelectMany(
                         kv =>
                         {
                             return kv.Select(
                                     e => Tuple.Create(
-                                        // Count how many common surrounding nodes each candidate node has
+                                        // Count how many common surrounding nodes each candidate node has 
                                         e.GetSurroundingKeys(range, inner, outer)
                                             .Count(commonKeys.Contains),
                                             e))
-                                    .Where(e => e.Item1 > minSimilarity
-                                    )
-                                    .Select(
+                                // The candidate node will be taken as similar node 
+                                // when the number of common surrounding nodes is bigger than the similarity threshold.
+                                     .Where(e => e.Item1 > minSimilarity
+                                     )
+                                     .Select(
                                             t => Tuple.Create(
                                                     t.Item1,	// Indicates the simlarity
                                                     CodeRange.Locate(t.Item2)
                                                     ));
                         })
-                    // Sort candidate nodes using the similarities
+                        // Sort candidate nodes using the similarities
                         .OrderByDescending(t => t.Item1).ToList();
+
                 TimeWatch.Stop("FindOutSimilarElements");
                 return ret;
             }
