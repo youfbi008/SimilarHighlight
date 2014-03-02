@@ -34,6 +34,7 @@ namespace SimilarHighlight
     {
         public XElement XElement;
         public CodeRange CodeRange;
+        public bool IsNeedFix;
     }
 
     public static class Inferrer
@@ -196,7 +197,7 @@ namespace SimilarHighlight
         }
 
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                Processor processor, IEnumerable<LocationInfo> locations, XElement root,
+                Processor processor, List<LocationInfo> locations, XElement root,
                 int range = 5, bool inner = true, bool outer = true)
         {
             try

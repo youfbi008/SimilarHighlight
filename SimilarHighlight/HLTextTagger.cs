@@ -36,14 +36,16 @@ namespace SimilarHighlight
         ITextStructureNavigator TextStructureNavigator { get; set; }
         NormalizedSnapshotSpanCollection WordSpans { get; set; }
         SnapshotSpan? CurrentWord { get; set; }
-        EnvDTE.Document document { get; set; }
+        EnvDTE.Document Document { get; set; }
         private object updateLock = new object();
         private object buildLock = new object();
 
+        // Make the highlight operation to background.
+        System.Threading.Thread listenThread;
         // The highlighted elements will be saved when the text is changed.
         NormalizedSnapshotSpanCollection TmpWordSpans { get; set; }
         // location datas 
-        IEnumerable<LocationInfo> Locations { get; set; }
+        List<LocationInfo> Locations { get; set; }
         // the collecton of highlighted elements
         List<SnapshotSpan> NewSpanAll { get; set; }
         // Count the number of left mouse button clicks.
@@ -68,17 +70,24 @@ namespace SimilarHighlight
         bool IsShiftDown = false;
         // Whether the similar elements are needed to fix.
         bool IsNeedFix = false;
-        Tuple<Regex, Tuple<int, int>> fixKit = null;
+        // the regex wheather need fix
+        Regex RegexNeedFix { get; set; }
+        // the forward offset when fixing
+        int startOffset { get; set; }
+        // the backward offset when fixing
+        int endOffset { get; set; }
+        Tuple<Regex, Tuple<int, int>> FixKit = null;
+        // LocationInfo of the element selected before current two element
+        LocationInfo PreLocationInfo { get; set; }
+        // Whether have the similar elements.
+        bool HaveSimilarElements = false;
 
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, ITextSearchService textSearchService,
 ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
             if (document == null)
                 return;
-            var currentTextDoc = document.Object("TextDocument");
-            SourceCode = currentTextDoc.StartPoint.CreateEditPoint().GetText(currentTextDoc.EndPoint);
-            
-            this.document = document;
+           
             if (this.Processor == null)
             {
                 switch (Path.GetExtension(document.FullName).ToUpper()) {
@@ -88,27 +97,43 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     //case ".CBL":
                     //    this.Processor = new Code2Xml.Languages.ExternalProcessors.Processors.Cobol.Cobol85Processor();
                     //    break;
-                    default:
+                    case ".CS":
                         this.Processor = new Code2Xml.Languages.ANTLRv3.Processors.CSharp.CSharpProcessorUsingAntlr3();
                         break;
                 }
 
-                RootElement = Processor.GenerateXml(SourceCode, true);
-        //        TokenElements = RootElement.Descendants("TOKEN").ToList();
-            }
+                if (Processor != null)
+                {
 
-            this.CntLeftClick = 0;
-            this.View = view;
-            this.View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;
-            this.View.VisualElement.PreviewMouseDown += VisualElement_PreviewMouseDown;
-            this.View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
-            this.View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
-            this.SourceBuffer = sourceBuffer;
-            this.TextSearchService = textSearchService;
-            this.TextStructureNavigator = textStructureNavigator;
-            this.WordSpans = new NormalizedSnapshotSpanCollection();
-            this.TmpWordSpans = new NormalizedSnapshotSpanCollection();
-            this.CurrentWord = null;
+                    var currentTextDoc = document.Object("TextDocument");
+                    SourceCode = currentTextDoc.StartPoint.CreateEditPoint().GetText(currentTextDoc.EndPoint);
+
+                    this.Document = document;
+
+                    RootElement = Processor.GenerateXml(SourceCode, true);
+                    RegexNeedFix = new Regex("\"(.*)\"");
+                    // the forward offset when fixing
+                    startOffset = 1;
+                    // the backward offset when fixing
+                    endOffset = 1;
+
+                    Locations = new List<LocationInfo>();
+                    this.CntLeftClick = 0;
+                    this.View = view;
+                    this.View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;
+                    this.View.VisualElement.PreviewMouseDown += VisualElement_PreviewMouseDown;
+                    this.View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
+                    this.View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
+                    this.SourceBuffer = sourceBuffer;
+                    this.TextSearchService = textSearchService;
+                    this.TextStructureNavigator = textStructureNavigator;
+                    this.WordSpans = new NormalizedSnapshotSpanCollection();
+                    this.TmpWordSpans = new NormalizedSnapshotSpanCollection();
+                    this.CurrentWord = null;
+
+                    //        TokenElements = RootElement.Descendants("TOKEN").ToList();
+                }
+            }
         }
 
         void VisualElement_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -158,15 +183,13 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             else if (IsShiftDown && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
             {
                 // When the select opeartion by keyboard is over.
-                RequestSelection = this.document.Selection;
+                RequestSelection = this.Document.Selection;
                 var tmpTxt = RequestSelection.Text.Trim();
                 if (tmpTxt != "")
                 {
-                    GetSimilarElements();
+                    // Highlight by background thread.
+                    ThreadStartHighlighting();
                 }
-                //&& TokenElements.First(el => el.Value == tmpTxt &&                    
-                //       el.Attribute("startline").Value == RequestSelection.TopPoint.Line.ToString() &&
-                //       el.Attribute("startpos").Value == (RequestSelection.TopPoint.LineCharOffset - 1).ToString()) != null
             }
         }
 
@@ -174,20 +197,20 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
             // TODO 1, Fix the bug of selection is unexpectedly ignored.
             // TODO 2, If the two selected elements haven't similar element, the selected element before two elements will be added to compare.
-            // TODO 3, Wheather the background thread can be used.
             if (CntLeftClick == 2)
             {
                 CntLeftClick = 0;
-                RequestSelection = this.document.Selection;
+                RequestSelection = this.Document.Selection;
             }
             else
             {
-                RequestSelection = this.document.Selection;
+                RequestSelection = this.Document.Selection;
             }
 
             if (RequestSelection.Text.Trim() != "")
             {
-                GetSimilarElements();
+                // Highlight by background thread.
+                ThreadStartHighlighting();
             }
         }
 
@@ -204,7 +227,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         void GetRootElement()
         {
             // When the target file is edited and not saved, the position of selection is different from befrore.
-            var currentTextDoc = document.Object("TextDocument");
+            var currentTextDoc = Document.Object("TextDocument");
             var tmpSource = currentTextDoc.StartPoint.CreateEditPoint().GetText(currentTextDoc.EndPoint);
 
             TimeWatch.Init();
@@ -221,7 +244,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             }
         }
 
-        void GetSimilarElements() {
+        void HighlightSimilarElements() {
             
             try
             {
@@ -233,7 +256,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     IsShiftDown = false;
                 }
 
-                var CurrentSelection = RequestSelection;
+                var currentSelection = RequestSelection;
 
                 // Validation Check
                 if (!IsValidSelection())
@@ -251,53 +274,10 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 var currentElement = currentRange.FindOutermostElement(RootElement);
                 TimeWatch.Stop("FindOutermostElement");
 
-                var regex = new Regex("\"(.*)\"");
-                if (IsNeedFix == false)
+                BuildLocationsFromTwoElements(currentRange, currentElement);
+
+                if (Locations.Count == 2)
                 {
-                    // the forward offset 
-                    int startOffset = 1;
-                    // the backward offset
-                    int endOffset = 1;
-
-                    // When selected word is between double quotation marks.
-                    var tokenElements = currentElement.DescendantsAndSelf().Where(el => el.IsToken()).ToList();
-                    if (tokenElements.Count() == 1 && tokenElements[0].TokenText().Length != RequestSelection.Text.Length
-                            && regex.IsMatch(tokenElements[0].TokenText()))
-                    {
-                        IsNeedFix = true;
-                        fixKit = Tuple.Create(regex,
-                                            Tuple.Create(startOffset, endOffset));
-                    }
-                }
-
-                // It will compare two elements by default.
-                if (Locations == null || Locations.Count<LocationInfo>() == 2)
-                {
-
-                    Locations = new[] {new LocationInfo {
-                        CodeRange = currentRange,
-                        XElement = currentElement,
-                    }};
-                }
-                else
-                {
-                    // Reset the judgement.
-                    if (IsNeedFix == true)
-                    {
-                        IsNeedFix = false;
-                    }
-                    else
-                    {
-                        fixKit = null;
-                    }
-
-                    Locations = Locations.Concat(new[] {new LocationInfo {
-                        CodeRange = currentRange,
-                        XElement = currentElement,
-                    }});
-
-                    // Set the threshold value of similarity.
-                    //Inferrer.SimilarityRange = 10;
 
                     // Get the similar Elements.
                     var ret = Inferrer.GetSimilarElements(Processor, Locations,
@@ -307,60 +287,142 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     // If no similar element is found then nothing will be highlighted.
                     if (ret.Count() == 0 || ret.First().Item1 == 0)
                     {
-                        return;
-                    }
-
-                    NewSpanAll = new List<SnapshotSpan>();
-                    CurrentSelectNum = 0;
-
-                    Parallel.ForEach(ret, tuple =>
-                    {
-                        lock (buildLock)
+                        HaveSimilarElements = false;
+                        // The element selected before current two element will be added to compare.
+                        if (PreLocationInfo.XElement != null)
                         {
-                            // Build the data collecton of the similar elements.
-                            BuildSimilarElementsCollection(tuple, fixKit);
+                            var tmpLocationInfo = Locations[0];
+                            Locations[0] = PreLocationInfo;
+
+                            // Get the similar Elements.
+                            ret = Inferrer.GetSimilarElements(Processor, Locations,
+                                    RootElement);
+                            
+                            // If no similar element is found then nothing will be highlighted.
+                            if (ret.Count() == 0 || ret.First().Item1 == 0)
+                            {
+                                Locations[0] = tmpLocationInfo;
+                                return;
+                            }                            
                         }
-                    });
-
-                    TimeWatch.Stop("BuildSimilarElementsCollection");
-
-                    if (NewSpanAll.Count == 0)
-                    {
-                        return;
-                    }
-
-                    NormalizedSnapshotSpanCollection wordSpan = new NormalizedSnapshotSpanCollection(NewSpanAll);
-
-                    if (fixKit != null)
-                    {
-                        if (regex.IsMatch(CurrentWordForCheck.GetText()))
+                        else
                         {
-                            currentStart += 1;
-                            currentEnd -= 1;
+                            return;
                         }
                     }
 
-                    // TODO if the elements of a line is bigger than 1, the position need to fix.
-                    var curSelection = wordSpan.AsParallel().Select((item, index) => new { Item = item, Index = index })
-                            .First(sel => (sel.Item.Start <= currentStart &&
-                            sel.Item.End >= currentEnd));
-
-                    if (curSelection != null)
-                    {
-                        CurrentSelectNum = curSelection.Index;
-                        // TODO temp  added
-                        TMPCurrentSelectNum = CurrentSelectNum;
-                    }
-
-                    // If another change hasn't happened, do a real update
-                    if (CurrentSelection == RequestSelection)
-                        SynchronousUpdate(CurrentSelection, wordSpan, CurrentWordForCheck);
+                    // Highlight operation.
+                    Highlight(currentSelection, ret);
                 }
             }
             catch (Exception exc)
             {
                 Debug.Write(exc.ToString());
             }
+        }
+
+        void BuildLocationsFromTwoElements(CodeRange currentRange, XElement currentElement) {
+
+            var tmpLocationInfo = new LocationInfo
+            {
+                CodeRange = currentRange,
+                XElement = currentElement,
+                IsNeedFix = NeedFixCheck(currentElement),
+            }; 
+
+            if (Locations.Count == 2 && HaveSimilarElements)
+            {
+                // Save the second element when the current two elements have similar element.
+                PreLocationInfo = Locations[1];
+                Locations.Clear();
+            }
+            else if (Locations.Count == 2 && !HaveSimilarElements) {
+                // Save the first element when the current two elements have not similar element.
+                PreLocationInfo = Locations[0];
+
+                Locations[0] = tmpLocationInfo;
+                Locations.Reverse();
+                return;
+            }
+
+            Locations.Add(tmpLocationInfo);
+
+        }
+
+        void Highlight(TextSelection currentSelection, IEnumerable<Tuple<int, CodeRange>> ret)
+        {
+            // Have the similar elements.
+            HaveSimilarElements = true;
+
+            var currentStart = CurrentWordForCheck.Start;
+            var currentEnd = CurrentWordForCheck.End;
+
+            if (Locations[0].IsNeedFix || Locations[1].IsNeedFix)
+            {
+                FixKit = Tuple.Create(RegexNeedFix,
+                                    Tuple.Create(startOffset, endOffset));
+                if (RegexNeedFix.IsMatch(CurrentWordForCheck.GetText()))
+                {
+                    currentStart += 1;
+                    currentEnd -= 1;
+                }
+            }
+            else
+            {
+                FixKit = null;
+            }
+
+            NewSpanAll = new List<SnapshotSpan>();
+            CurrentSelectNum = 0;
+
+            Parallel.ForEach(ret, tuple =>
+            {
+                lock (buildLock)
+                {
+                    // Build the data collecton of the similar elements.
+                    BuildSimilarElementsCollection(tuple);
+                }
+            });
+
+            TimeWatch.Stop("BuildSimilarElementsCollection");
+
+            if (NewSpanAll.Count == 0)
+            {
+                return;
+            }
+
+            NormalizedSnapshotSpanCollection wordSpan = new NormalizedSnapshotSpanCollection(NewSpanAll);            
+
+            // TODO if the elements of a line is bigger than 1, the position need to fix.
+            var curSelection = wordSpan.AsParallel().Select((item, index) => new { Item = item, Index = index })
+                    .First(sel => (sel.Item.Start <= currentStart &&
+                    sel.Item.End >= currentEnd));
+
+            if (curSelection != null)
+            {
+                CurrentSelectNum = curSelection.Index;
+                // TODO temp  added
+                TMPCurrentSelectNum = CurrentSelectNum;
+            }
+
+            // If another change hasn't happened, do a real update
+            if (currentSelection == RequestSelection)
+                SynchronousUpdate(currentSelection, wordSpan, CurrentWordForCheck);
+        }
+
+        // When the selected element does not contain the double quotation marks, 
+        // but the token node contains them, 
+        // the double quotation marks will be cutted when highlighting.
+        bool NeedFixCheck(XElement currentElement)
+        {
+            // When selected word is between double quotation marks.
+            var tokenElements = currentElement.DescendantsAndSelf().Where(el => el.IsToken()).ToList();
+            if (tokenElements.Count() == 1 && tokenElements[0].TokenText().Length != RequestSelection.Text.Length
+                    && RegexNeedFix.IsMatch(tokenElements[0].TokenText()))
+            {
+                return true;
+            }
+            return false;
         }
 
         bool IsValidSelection()
@@ -405,18 +467,17 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             return point.Position - lineNum + 1;
         }
 
-        void BuildSimilarElementsCollection(Tuple<int, CodeRange> tuple, Tuple<Regex, Tuple<int, int>> fixKit)
+        void BuildSimilarElementsCollection(Tuple<int, CodeRange> tuple)
         {
-
             // Build the collecton of similar elements.
             var startAndEnd = tuple.Item2.ConvertToIndicies(SourceCode);
 
             SnapshotPoint tmpStart;
             SnapshotPoint tmpEnd;
-            if (fixKit != null && fixKit.Item1.IsMatch(SourceCode.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1)))
-            {   
-                tmpStart = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item1 + fixKit.Item2.Item1);
-                tmpEnd = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item2 - fixKit.Item2.Item2);
+            if (FixKit != null && FixKit.Item1.IsMatch(SourceCode.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1)))
+            {
+                tmpStart = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item1 + FixKit.Item2.Item1);
+                tmpEnd = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item2 - FixKit.Item2.Item2);
             }
             else {
                 tmpStart = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item1);
@@ -530,7 +591,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
             if (blEdge) return;
 
-            var selected = this.document.Selection;
+            var selected = this.Document.Selection;
             if (selected != null)
             {
                 // Get the position data of the similar element.
@@ -539,6 +600,20 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 // Make the similar element highlighted.
                 selected.MoveToAbsoluteOffset(newStartOffset, false);
                 selected.MoveToAbsoluteOffset(newStartOffset + newSpan.Length, true);
+            }
+        }
+
+        void ThreadStartHighlighting(bool isBackground = true)
+        {
+            if (isBackground)
+            {
+                this.listenThread = new System.Threading.Thread(this.HighlightSimilarElements);
+                this.listenThread.IsBackground = true;
+                this.listenThread.Start();
+            }
+            else
+            {
+                HighlightSimilarElements();
             }
         }
     }

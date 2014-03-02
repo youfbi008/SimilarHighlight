@@ -45,17 +45,17 @@ namespace SimilarHighlight.Tests
 			};
 
 			// Get similar nodes
-			var ret = Inferrer.GetSimilarElements(processor, new[] { processorIdentifier, fileInfoIdentifier },
-                    xml);
+            //var ret = Inferrer.GetSimilarElements(processor, new[] { processorIdentifier, fileInfoIdentifier },
+            //        xml);
 
-			// Show the similar nodes
-			foreach (var tuple in ret.Take(10)) {
-				var score = tuple.Item1;
-				var codeRange = tuple.Item2;
-                var startAndEnd = codeRange.ConvertToIndicies(code);
-                var fragment = code.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1);
-				Console.WriteLine("Similarity: " + score + ", code: " + fragment);
-			}           
+            //// Show the similar nodes
+            //foreach (var tuple in ret.Take(10)) {
+            //    var score = tuple.Item1;
+            //    var codeRange = tuple.Item2;
+            //    var startAndEnd = codeRange.ConvertToIndicies(code);
+            //    var fragment = code.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1);
+            //    Console.WriteLine("Similarity: " + score + ", code: " + fragment);
+            //}           
 		}
     }
 }
