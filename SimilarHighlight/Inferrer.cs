@@ -237,7 +237,7 @@ namespace SimilarHighlight
                 if (SimilarityRange == 0 && keysCount != 0)
                 {
                     // TODO The better algorithm is expected.
-                    similarityRange = keysCount / 6;
+                    similarityRange = keysCount / 4;
                 }
                 else
                 {

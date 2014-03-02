@@ -195,8 +195,6 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
         void VisualElement_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            // TODO 1, Fix the bug of selection is unexpectedly ignored.
-            // TODO 2, If the two selected elements haven't similar element, the selected element before two elements will be added to compare.
             if (CntLeftClick == 2)
             {
                 CntLeftClick = 0;
@@ -248,28 +246,24 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             
             try
             {
-                if (!IsShiftDown)
+                if (IsShiftDown)
                 {
-                    GetRootElement();
-                }
-                else {
+                    // Reset the key state.
                     IsShiftDown = false;
                 }
-
-                var currentSelection = RequestSelection;
-
-                // Validation Check
-                if (!IsValidSelection())
+                    
+                // Get the current source code.
+                // Even the shift key is pressed down, the source code maybe edited.
+                GetRootElement();
+                                
+                CodeRange currentRange;
+                // Validation Check and get the CodeRange
+                if (!GetCodeRange(out currentRange))
                 {
                     return;
                 }
 
-                var currentStart = ConvertToPosition(RequestSelection.TopPoint);
-                var currentEnd = ConvertToPosition(RequestSelection.BottomPoint);
-                CurrentWordForCheck = new SnapshotSpan(currentStart, currentEnd);
-
-                var currentRange = GetCodeRangeBySelection(CurrentWordForCheck);
-                    
+                var currentSelection = RequestSelection;
                 TimeWatch.Start();
                 var currentElement = currentRange.FindOutermostElement(RootElement);
                 TimeWatch.Stop("FindOutermostElement");
@@ -346,7 +340,6 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             }
 
             Locations.Add(tmpLocationInfo);
-
         }
 
         void Highlight(TextSelection currentSelection, IEnumerable<Tuple<int, CodeRange>> ret)
@@ -425,29 +418,27 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             return false;
         }
 
-        bool IsValidSelection()
+        bool GetCodeRange(out CodeRange newCodeRange)
         {
-            // Repeat check   
+            CurrentWordForCheck = new SnapshotSpan(ConvertToPosition(RequestSelection.TopPoint),
+                    ConvertToPosition(RequestSelection.BottomPoint));
+
+            newCodeRange = CodeRange.ConvertFromIndicies(SourceCode,
+                CurrentWordForCheck.Start.Position,
+                CurrentWordForCheck.End.Position);
+            
+            // Validation Check
             if (this.CurrentWordForCheck != null)
             {
-                var currentStart = ConvertToPosition(RequestSelection.TopPoint);
-                var currentEnd = ConvertToPosition(RequestSelection.BottomPoint);
-
+                var tmpCodeRange = newCodeRange;
                 // The select operation will be ignored if the selection is same with before.
-                if (Locations != null && Locations.Count<LocationInfo>() == 1 && 
-                    currentStart.Position == ((SnapshotSpan)this.CurrentWordForCheck).Start.Position &&
-                    currentEnd.Position == ((SnapshotSpan)this.CurrentWordForCheck).End.Position)
+                if (Locations.Where(ln => ln.CodeRange == tmpCodeRange).Count() > 0)
                 {
                     return false;
                 }
             }
 
             return true;
-        }
-
-        CodeRange GetCodeRangeBySelection(SnapshotSpan currentWord)
-        {
-            return CodeRange.ConvertFromIndicies(SourceCode, currentWord.Start.Position, currentWord.End.Position);
         }
 
         // Convert TextSelection to SnapshotPoint
