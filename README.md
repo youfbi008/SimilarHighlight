@@ -11,9 +11,6 @@ ShortKeys:
 * `Ctrl + Alt + <-` to make the previous similar element selected.  
 * `ESC` to make the highlighted elements return to normal.  
 
-Now, you can download the extension from Visual Studio Gallery(the url of the next line).  
-http://visualstudiogallery.msdn.microsoft.com/5b2a1ed1-3514-4786-8a83-a7d82c3a336a
-
 # Supported Languages  
 
 * C#(.cs)  
