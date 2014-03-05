@@ -6,6 +6,9 @@ SimilarHighlight is a simple extension by the Managed Extensibility Framework.
 1.Highlight all similar elements by selecting text twice.  
 2.The current cursor can be move onto other element of the similar elements by shortcuts.  
 
+Take a look at this picture, you will know what happened.
+https://github.com/youfbi008/SimilarHighlight/blob/master/SimilarHighlight/ICONsnapshot.jpg
+
 ShortKeys:
 * `Ctrl + Alt + ->` to make the next similar element selected.  
 * `Ctrl + Alt + <-` to make the previous similar element selected.  
