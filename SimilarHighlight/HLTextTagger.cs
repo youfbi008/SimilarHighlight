@@ -105,7 +105,6 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                             break;
                         case ".CBL":
                             this.isStrict = false;
-                            this.hasSR = false;
                             this.Processor = new Code2Xml.Languages.ExternalProcessors.Processors.Cobol.Cobol85Processor();
                             break;
                         case ".CS":
@@ -118,7 +117,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
                         var currentTextDoc = document.Object("TextDocument");
                         SourceCode = currentTextDoc.StartPoint.CreateEditPoint().GetText(currentTextDoc.EndPoint);
-
+                        // Check the line break type of the file.
+                        CheckLineBreakType();
                         this.Document = document;
 
                         RootElement = Processor.GenerateXml(SourceCode, true);
@@ -704,6 +704,26 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             catch (Exception exc)
             {
                 Debug.Write(exc.ToString());
+            }
+        }
+
+        private void CheckLineBreakType()
+        {
+            int count = 0;
+            int startIndex = 0;
+            while (true)
+            {
+                int newIndex = SourceCode.IndexOf("\r\n", startIndex);
+                if (newIndex >= 0)
+                {
+                    count++;
+                    startIndex = newIndex + 1;
+                    if (count > 10)
+                    {
+                        hasSR = true;
+                        break;
+                    }
+                }
             }
         }
     }
