@@ -52,6 +52,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Code2Xml.2.1.1.84\lib\Code2Xml.Languages.ANTLRv3.dll</HintPath>
     </Reference>
+    <Reference Include="Code2Xml.Languages.ExternalProcessors, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Code2Xml.2.1.1.84\lib\Code2Xml.Languages.ExternalProcessors.dll</HintPath>
+    </Reference>
     <Reference Include="Code2Xml.Languages.Obsolete, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Code2Xml.2.1.1.84\lib\Code2Xml.Languages.Obsolete.dll</HintPath>

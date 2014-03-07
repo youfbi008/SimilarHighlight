@@ -81,6 +81,10 @@ namespace SimilarHighlight
         LocationInfo PreLocationInfo { get; set; }
         // Whether have the similar elements.
         bool HaveSimilarElements = false;
+        // The strict similarity.
+        public bool isStrict { get; set; }
+        // The line break. Cobol only has /n.(TODO: need check)
+        public bool hasSR { get; set; }
 
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, ITextSearchService textSearchService,
 ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
@@ -92,14 +96,18 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
                 if (this.Processor == null)
                 {
+                    this.isStrict = true;
+                    this.hasSR = true;
                     switch (Path.GetExtension(document.FullName).ToUpper())
                     {
                         case ".JAVA":
                             this.Processor = new Code2Xml.Languages.ANTLRv3.Processors.Java.JavaProcessorUsingAntlr3();
                             break;
-                        //case ".CBL":
-                        //    this.Processor = new Code2Xml.Languages.ExternalProcessors.Processors.Cobol.Cobol85Processor();
-                        //    break;
+                        case ".CBL":
+                            this.isStrict = false;
+                            this.hasSR = false;
+                            this.Processor = new Code2Xml.Languages.ExternalProcessors.Processors.Cobol.Cobol85Processor();
+                            break;
                         case ".CS":
                             this.Processor = new Code2Xml.Languages.ANTLRv3.Processors.CSharp.CSharpProcessorUsingAntlr3();
                             break;
@@ -280,7 +288,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
                     // Get the similar Elements.
                     var ret = Inferrer.GetSimilarElements(Processor, Locations,
-                            RootElement);
+                            RootElement, isStrict);
 
                     TimeWatch.Start();
                     // If no similar element is found then nothing will be highlighted.
@@ -295,7 +303,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
                             // Get the similar Elements.
                             ret = Inferrer.GetSimilarElements(Processor, Locations,
-                                    RootElement);
+                                    RootElement, isStrict);
                             
                             // If no similar element is found then nothing will be highlighted.
                             if (ret.Count() == 0 || ret.First().Item1 == 0)
@@ -496,8 +504,12 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         // The position data will be converted from SnapshotPoint to TextSelection.
         internal int ConvertToCharOffset(SnapshotPoint point)
         {
-            int lineNum = this.View.TextSnapshot.GetLineNumberFromPosition(point.Position);
-            return point.Position - lineNum + 1;
+            if (this.hasSR)
+            {
+                int lineNum = this.View.TextSnapshot.GetLineNumberFromPosition(point.Position);
+                return point.Position - lineNum + 1;
+            }
+            return point.Position + 1;
         }
 
         // TODO Console.WriteLine("12345" + this.global_int_A); this pattern will be considered how to highlight.

@@ -18,6 +18,7 @@ ShortKeys:
 
 * C#(.cs)  
 * JAVA(.java)  
+* Cobol(.cbl) Now some elements can be highlighted. You can test it use CobolTest.CBL.  
 We will try to make it support other languages in future.  
 
 # Requirements  

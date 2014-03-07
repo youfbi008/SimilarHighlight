@@ -197,7 +197,7 @@ namespace SimilarHighlight
         }
 
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                Processor processor, List<LocationInfo> locations, XElement root,
+                Processor processor, List<LocationInfo> locations, XElement root, bool isStrict,
                 int range = 5, bool inner = true, bool outer = true)
         {
             try
@@ -245,14 +245,22 @@ namespace SimilarHighlight
                     similarityRange = SimilarityRange;
                 }
 
-                // If the similarity is too small. 
-                if (commonKeys.Count <= similarityRange)
+                int minSimilarity = 0;
+                if (isStrict)
                 {
-                    return Enumerable.Empty<Tuple<int, CodeRange>>();
-                }
+                    // If the similarity is too small. 
+                    if (commonKeys.Count <= similarityRange)
+                    {
+                        return Enumerable.Empty<Tuple<int, CodeRange>>();
+                    }
 
-                // Get the similarity threshold.
-                int minSimilarity = commonKeys.Count - similarityRange;
+                    // Get the similarity threshold.
+                    minSimilarity = commonKeys.Count - similarityRange;
+                }
+                else
+                {
+                    minSimilarity = commonKeys.Count * 2 / 3;
+                }
 
                 TimeWatch.Start();
 
