@@ -111,7 +111,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     this.Document = document;
 
                     RootElement = Processor.GenerateXml(SourceCode, true);
-                    RegexNeedFix = new Regex("\"(.*)\"");
+                    RegexNeedFix = new Regex("^\"(.*)\"$");
                     // the forward offset when fixing
                     startOffset = 1;
                     // the backward offset when fixing
@@ -458,6 +458,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             return point.Position - lineNum + 1;
         }
 
+        // TODO Console.WriteLine("12345" + this.global_int_A); this pattern will be considered how to highlight.
         void BuildSimilarElementsCollection(Tuple<int, CodeRange> tuple)
         {
             // Build the collecton of similar elements.
