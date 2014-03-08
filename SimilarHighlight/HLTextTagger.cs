@@ -83,7 +83,7 @@ namespace SimilarHighlight
         bool HaveSimilarElements = false;
         // The strict similarity.
         public bool isStrict { get; set; }
-        // The line break. Cobol only has /n.(TODO: need check)
+        // The line break. Cobol only has /n.
         public bool hasSR { get; set; }
 
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, ITextSearchService textSearchService,
