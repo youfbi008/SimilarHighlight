@@ -31,14 +31,7 @@ using System.Threading.Tasks;
 
 namespace SimilarHighlight
 {
-    public struct LocationInfo
-    {
-        public XElement XElement;
-        public CodeRange CodeRange;
-        public bool IsNeedFix;
-    }
-
-    public static class Inferrer
+    public static class AstInferrer
     {
         // similarity range
         public static int SimilarityRange { get; set; }
@@ -143,16 +136,16 @@ namespace SimilarHighlight
             return ret;
         }
 
-        //public static HashSet<string> GetUnionKeys(
-        //        this IEnumerable<CstNode> elements, int length, bool inner = true, bool outer = true)
-        //{
-        //    var commonKeys = new HashSet<string>();
-        //    foreach (var element in elements) {
-        //        var keys = element.GetSurroundingKeys(length, inner, outer);
-        //        commonKeys.UnionWith(keys);
-        //    }
-        //    return commonKeys;
-        //}
+        public static HashSet<string> GetUnionKeys(
+                this IEnumerable<CstNode> elements, int length, bool inner = true, bool outer = true)
+        {
+            var commonKeys = new HashSet<string>();
+            foreach (var element in elements) {
+                var keys = element.GetSurroundingKeys(length, inner, outer);
+                commonKeys.UnionWith(keys);
+            }
+            return commonKeys;
+        }
 
         public static HashSet<string> GetCommonKeys(
                 this IEnumerable<CstNode> elements, int length, bool inner = true, bool outer = true)
@@ -200,7 +193,7 @@ namespace SimilarHighlight
         }
 
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, XElement root, bool isStrict, int treeType = 0,
+                IEnumerable<LocationInfo> locations, XElement root, bool isStrict,
                 int range = 5, bool inner = true, bool outer = true)
         {
             try

@@ -10,8 +10,7 @@ ShortKeys:
 * `Ctrl + Alt + <-` to make the previous similar element selected.  
 * `ESC` to make the highlighted elements return to normal.  
 
-This is a introductory video on YouTube.
-http://youtu.be/6MBXuqFHS2w
+This is a introductory video on YouTube. http://youtu.be/6MBXuqFHS2w  
 
 # Supported Languages  
 

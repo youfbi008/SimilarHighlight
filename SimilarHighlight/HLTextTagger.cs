@@ -24,6 +24,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Code2Xml.Languages.ANTLRv3.Processors.Java;
 using System.Collections;
+using Code2Xml.Core.Generators;
 
 
 namespace SimilarHighlight
@@ -58,8 +59,8 @@ namespace SimilarHighlight
         int CurrentSelectNum { get; set; }
         // the temp order number of current selection in highlighted elements
         int TMPCurrentSelectNum { get; set; }
-        // the processor of the current editor
-        Processor Processor;
+        // the SyntaxTreeGenerator of the current editor
+        SyntaxTreeGenerator SyntaxTreeGenerator;
         // the source code of the current editor
         string SourceCode { get; set; }
         // the root element of the source code
@@ -85,7 +86,8 @@ namespace SimilarHighlight
         public bool isStrict { get; set; }
         // The line break. Cobol only has /n.
         public bool hasSR { get; set; }
-
+        // CST : 0;  AST : 1;
+        private int treeType = 0;
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, ITextSearchService textSearchService,
 ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
         {
@@ -94,25 +96,26 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 if (document == null)
                     return;
 
-                if (this.Processor == null)
+                if (this.SyntaxTreeGenerator == null)
                 {
                     this.isStrict = true;
                     this.hasSR = true;
                     switch (Path.GetExtension(document.FullName).ToUpper())
                     {
                         case ".JAVA":
-                            this.Processor = new Code2Xml.Languages.ANTLRv3.Processors.Java.JavaProcessorUsingAntlr3();
+                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.Java.JavaCstGeneratorUsingAntlr3();
                             break;
                         case ".CBL":
                             this.isStrict = false;
-                            this.Processor = new Code2Xml.Languages.ExternalProcessors.Processors.Cobol.Cobol85Processor();
+                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Cobol.Cobol85AstGenerator();
+                            treeType = 1;
                             break;
                         case ".CS":
-                            this.Processor = new Code2Xml.Languages.ANTLRv3.Processors.CSharp.CSharpProcessorUsingAntlr3();
+                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.CSharp.CSharpCstGeneratorUsingAntlr3();
                             break;
                     }
 
-                    if (Processor != null)
+                    if (SyntaxTreeGenerator != null)
                     {
 
                         var currentTextDoc = document.Object("TextDocument");
@@ -121,7 +124,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                         CheckLineBreakType();
                         this.Document = document;
 
-                        RootElement = Processor.GenerateXml(SourceCode, true);
+                        RootElement = SyntaxTreeGenerator.GenerateXmlFromCodeText(SourceCode, true);
                         RegexNeedFix = new Regex("^\"(.*)\"$");
                         // the forward offset when fixing
                         startOffset = 1;
@@ -241,7 +244,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     SourceCode = tmpSource;
                     TimeWatch.Start();
                     // If the converting errors, the exception will be catched.
-                    RootElement = Processor.GenerateXml(SourceCode, true);
+                    RootElement = SyntaxTreeGenerator.GenerateXmlFromCodeText(SourceCode, true);
                     TimeWatch.Stop("GenerateXml");
 
                     //       TokenElements = RootElement.Descendants("TOKEN").ToList();
@@ -287,7 +290,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 {
 
                     // Get the similar Elements.
-                    var ret = Inferrer.GetSimilarElements(Processor, Locations,
+                    var ret = Inferrer.GetSimilarElements(Locations,
                             RootElement, isStrict);
 
                     TimeWatch.Start();
@@ -302,7 +305,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                             Locations[0] = PreLocationInfo;
 
                             // Get the similar Elements.
-                            ret = Inferrer.GetSimilarElements(Processor, Locations,
+                            ret = Inferrer.GetSimilarElements(Locations,
                                     RootElement, isStrict);
                             
                             // If no similar element is found then nothing will be highlighted.
