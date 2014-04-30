@@ -29,6 +29,13 @@ using Code2Xml.Core.Generators;
 
 namespace SimilarHighlight
 {
+    public struct LocationInfo
+    {
+        public XElement XElement;
+        public CodeRange CodeRange;
+        public bool IsNeedFix;
+    }
+
     internal class HLTextTagger : ITagger<HLTextTag>
     {
         IWpfTextView View { get; set; }
@@ -107,7 +114,7 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                             break;
                         case ".CBL":
                             this.isStrict = false;
-                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Cobol.Cobol85AstGenerator();
+                       //     this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Cobol.Cobol85AstGenerator();
                             treeType = 1;
                             break;
                         case ".CS":
@@ -290,8 +297,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 {
 
                     // Get the similar Elements.
-                    var ret = Inferrer.GetSimilarElements(Locations,
-                            RootElement, isStrict);
+                    var ret = InferrerSelector.GetSimilarElements(Locations,
+                            RootElement, isStrict, treeType);
 
                     TimeWatch.Start();
                     // If no similar element is found then nothing will be highlighted.
@@ -305,8 +312,8 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                             Locations[0] = PreLocationInfo;
 
                             // Get the similar Elements.
-                            ret = Inferrer.GetSimilarElements(Locations,
-                                    RootElement, isStrict);
+                            ret = InferrerSelector.GetSimilarElements(Locations,
+                                    RootElement, isStrict, treeType);
                             
                             // If no similar element is found then nothing will be highlighted.
                             if (ret.Count() == 0 || ret.First().Item1 == 0)

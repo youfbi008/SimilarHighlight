@@ -136,16 +136,16 @@ namespace SimilarHighlight
             return ret;
         }
 
-        public static HashSet<string> GetUnionKeys(
-                this IEnumerable<CstNode> elements, int length, bool inner = true, bool outer = true)
-        {
-            var commonKeys = new HashSet<string>();
-            foreach (var element in elements) {
-                var keys = element.GetSurroundingKeys(length, inner, outer);
-                commonKeys.UnionWith(keys);
-            }
-            return commonKeys;
-        }
+        //public static HashSet<string> GetUnionKeys(
+        //        this IEnumerable<CstNode> elements, int length, bool inner = true, bool outer = true)
+        //{
+        //    var commonKeys = new HashSet<string>();
+        //    foreach (var element in elements) {
+        //        var keys = element.GetSurroundingKeys(length, inner, outer);
+        //        commonKeys.UnionWith(keys);
+        //    }
+        //    return commonKeys;
+        //}
 
         public static HashSet<string> GetCommonKeys(
                 this IEnumerable<CstNode> elements, int length, bool inner = true, bool outer = true)

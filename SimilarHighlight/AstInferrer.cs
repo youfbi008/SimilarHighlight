@@ -33,18 +33,19 @@ namespace SimilarHighlight
 {
     public static class AstInferrer
     {
+        // TODO: The class will be fixed in future. 
         // similarity range
         public static int SimilarityRange { get; set; }
 
         private static int keysCount { get; set; }
 
         public static HashSet<string> GetSurroundingKeys(
-                this CstNode node, int length, bool inner = true, bool outer = true)
+                this AstNode node, int length, bool inner = true, bool outer = true)
         {
             //inner = outer = true; // TODO: for debug
 
             var ret = new HashSet<string>();
-            var childElements = new List<Tuple<CstNode, string>>();
+            var childElements = new List<Tuple<AstNode, string>>();
             if (inner)
             {
                 childElements.Add(Tuple.Create(node, node.Name));
@@ -55,7 +56,7 @@ namespace SimilarHighlight
                     if (e == null) {
                         continue;
                     }
-                    ancestorStr = ancestorStr + "<" + e.NameWithId();
+                    ancestorStr = ancestorStr + "<" + e.Name;
                     ret.Add(ancestorStr);
                 }
             }
@@ -66,23 +67,23 @@ namespace SimilarHighlight
                 var descendantStr = "";
                 foreach (var e in node.DescendantsOfSingleAndSelf())
                 {
-                    descendantStr = descendantStr + "<" + e.NameWithId();
+                    descendantStr = descendantStr + "<" + e.Name;
                     ret.Add(descendantStr);
                 }
                 // 自分自身の位置による区別も考慮する
-                ret.Add(node.NameOrTokenWithId());
+                ret.Add(node.Name);//.NameOrTokenWithId()
                 for (; i <= length; i++)
                 {
-                    var newChildElements = new List<Tuple<CstNode, string>>();
+                    var newChildElements = new List<Tuple<AstNode, string>>();
                     foreach (var t in childElements)
                     {
                         foreach (var e in t.Item1.Elements())
                         {
-                            var key = t.Item2 + ">" + e.NameOrTokenWithId();
+                            var key = t.Item2 + ">" + e.Name;
                             newChildElements.Add(Tuple.Create(e, key));
                             // トークンが存在するかチェックする弱い条件
                             // for Preconditions.checkArguments()
-                            ret.Add(t.Item2 + ">'" + e.TokenText + "'");
+                            ret.Add(t.Item2 + ">'" + e.Token.Text + "'");
                         }
                         foreach (var e in t.Item1.Descendants())
                         {
@@ -92,11 +93,11 @@ namespace SimilarHighlight
                     }
                     foreach (var e in parentElement.Item1.Siblings(10))
                     {
-                        var key = parentElement.Item2 + "-" + e.NameOrTokenWithId();
+                        var key = parentElement.Item2 + "-" + e.Name;
                         newChildElements.Add(Tuple.Create(e, key));
                         // トークンが存在するかチェックする弱い条件
                         // for Preconditions.checkArguments()
-                        ret.Add(parentElement.Item2 + "-'" + e.TokenText + "'");
+                        ret.Add(parentElement.Item2 + "-'" + e.Token.Text + "'");
                         //// 先祖に存在するかチェックする弱い条件
                         //var iLastName = parentElement.Item2.LastIndexOf("<");
                         //var weakKey = "<<" + parentElement.Item2.Substring(iLastName + 1) + "-" + e.NameOrTokenWithId();
@@ -112,22 +113,22 @@ namespace SimilarHighlight
                     }
                     parentElement = Tuple.Create(
                             newParentElement,
-                            parentElement.Item2 + "<" + newParentElement.NameOrTokenWithId());
+                            parentElement.Item2 + "<" + newParentElement.Name);
                     ret.Add(parentElement.Item2);
                 }
             }
             for (; i <= length; i++)
             {
-                var newChildElements = new List<Tuple<CstNode, string>>();
+                var newChildElements = new List<Tuple<AstNode, string>>();
                 foreach (var t in childElements)
                 {
                     foreach (var e in t.Item1.Elements())
                     {
-                        var key = t.Item2 + ">" + e.NameOrTokenWithId();
+                        var key = t.Item2 + ">" + e.Name;
                         newChildElements.Add(Tuple.Create(e, key));
                         // トークンが存在するかチェックする弱い条件
                         // for Preconditions.checkArguments()
-                        ret.Add(t.Item2 + ">'" + e.TokenText + "'");
+                        ret.Add(t.Item2 + ">'" + e.Token.Text + "'");
                     }
                 }
                 ret.UnionWith(newChildElements.Select(t => t.Item2));
@@ -137,7 +138,7 @@ namespace SimilarHighlight
         }
 
         public static HashSet<string> GetUnionKeys(
-                this IEnumerable<CstNode> elements, int length, bool inner = true, bool outer = true)
+                this IEnumerable<AstNode> elements, int length, bool inner = true, bool outer = true)
         {
             var commonKeys = new HashSet<string>();
             foreach (var element in elements) {
@@ -148,7 +149,7 @@ namespace SimilarHighlight
         }
 
         public static HashSet<string> GetCommonKeys(
-                this IEnumerable<CstNode> elements, int length, bool inner = true, bool outer = true)
+                this IEnumerable<AstNode> elements, int length, bool inner = true, bool outer = true)
         {
             HashSet<string> commonKeys = null;
             keysCount = 0;
@@ -175,7 +176,7 @@ namespace SimilarHighlight
             return commonKeys;
         }
 
-        private static ISet<string> AdoptNodeNames(ICollection<CstNode> outermosts)
+        private static ISet<string> AdoptNodeNames(ICollection<AstNode> outermosts)
         {
             var name2Count = new Dictionary<string, int>();
             var candidates = outermosts.AsParallel().SelectMany(
@@ -201,22 +202,22 @@ namespace SimilarHighlight
                 var similarityRange = 0;
 
                 // Convert the location informatoin (CodeRange) to the node (XElement) in the ASTs
-                var elements = new List<CstNode>();
+                var elements = new List<AstNode>();
 
                 foreach (var location in locations)
                 {
-                    elements.Add(CstNode.FromXml(location.XElement));
+                    elements.Add(AstNode.FromXml(location.XElement));
                 }
 
                 // Determine the node names to extract candidate nodes from the ASTs
                 var names = AdoptNodeNames(elements);
 
                 // Extract candidate nodes that has one of the determined names
-                var candidates = new List<IEnumerable<CstNode>>();
+                var candidates = new List<IEnumerable<AstNode>>();
 
                 TimeWatch.Start();
 
-                CstNode node = CstNode.FromXml(root);
+                AstNode node = AstNode.FromXml(root);
                 candidates.Add(
                         node.Descendants().AsParallel()
                                 .Where(e => names.Contains(e.Name)).ToList());
@@ -278,7 +279,8 @@ namespace SimilarHighlight
                                      .Select(
                                             t => Tuple.Create(
                                                     t.Item1,	// Indicates the simlarity
-                                                    CodeRange.Locate(t.Item2)
+                                                    CodeRange.Nil
+                                              //      CodeRange.Locate(t.Item2) TODO: this will be fixed in future.
                                                     ));
                         })
                         // Sort candidate nodes using the similarities
