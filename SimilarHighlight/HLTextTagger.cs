@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 using Code2Xml.Languages.ANTLRv3.Processors.Java;
 using System.Collections;
 using Code2Xml.Core.Generators;
+using SimilarHighlight.OutputWindow;
 
 
 namespace SimilarHighlight
@@ -40,8 +41,6 @@ namespace SimilarHighlight
     {
         IWpfTextView View { get; set; }
         ITextBuffer SourceBuffer { get; set; }
-        ITextSearchService TextSearchService { get; set; }
-        ITextStructureNavigator TextStructureNavigator { get; set; }
         NormalizedSnapshotSpanCollection WordSpans { get; set; }
         SnapshotSpan? CurrentWord { get; set; }
         EnvDTE.Document Document { get; set; }
@@ -55,7 +54,9 @@ namespace SimilarHighlight
         // location datas 
         List<LocationInfo> Locations { get; set; }
         // the collecton of highlighted elements
-        List<SnapshotSpan> NewSpanAll { get; set; }
+        public static IList<SnapshotSpan> NewSpanAll = new List<SnapshotSpan>();
+        public static int HighlightNo = 0;
+        public static bool IsChecked = false;
         // Count the number of left mouse button clicks.
         int CntLeftClick { get; set; }
         // current selection
@@ -93,13 +94,17 @@ namespace SimilarHighlight
         public bool isStrict { get; set; }
         // The line break. Cobol only has /n.
         public bool hasSR { get; set; }
-        // CST : 0;  AST : 1;
+		// CST : 0;  AST : 1;
         private int treeType = 0;
-        public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, ITextSearchService textSearchService,
-ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
+        private IOutputWindowPane OutputWindow;
+        [Import]
+        internal IWpfTextViewMarginProvider WpfTextViewMarginProvider;
+
+        public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, EnvDTE.Document document, IOutputWindowPane outputWindow)
         {
             try
             {
+                
                 if (document == null)
                     return;
 
@@ -109,16 +114,31 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     this.hasSR = true;
                     switch (Path.GetExtension(document.FullName).ToUpper())
                     {
+                        case ".C":
+                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.C.CCstGeneratorUsingAntlr3();
+                            break;
+                        case ".PHP":
+                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.Php.PhpCstGeneratorUsingAntlr3();
+                            break;
                         case ".JAVA":
                             this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.Java.JavaCstGeneratorUsingAntlr3();
                             break;
-                        case ".CBL":
-                            this.isStrict = false;
-                       //     this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Cobol.Cobol85AstGenerator();
-                            treeType = 1;
-                            break;
+                        case ".JS":
+                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.JavaScript.JavaScriptCstGeneratorUsingAntlr3();
+                            break;                        
                         case ".CS":
                             this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.CSharp.CSharpCstGeneratorUsingAntlr3();
+                            break;
+                        // TODO: ExternalGenerators will be fixed.
+                        case ".PY": //TODO: python 2 and 3 has the same extension that is "py".
+                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Python.Python2CstGenerator();
+                            break;
+                        case ".RB": //TODO: ruby 18, 19, 20 has the same extension that is "rb".
+                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Ruby.Ruby18AstGenerator();
+                            break;
+                        case ".CBL":
+                            this.isStrict = false;
+                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Cobol.Cobol85CstGenerator();
                             break;
                     }
 
@@ -145,12 +165,10 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                         this.View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
                         this.View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
                         this.SourceBuffer = sourceBuffer;
-                        this.TextSearchService = textSearchService;
-                        this.TextStructureNavigator = textStructureNavigator;
                         this.WordSpans = new NormalizedSnapshotSpanCollection();
                         this.TmpWordSpans = new NormalizedSnapshotSpanCollection();
                         this.CurrentWord = null;
-
+                        this.OutputWindow = outputWindow;
                         //        TokenElements = RootElement.Descendants("TOKEN").ToList();
                     }
                 }
@@ -370,6 +388,11 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 }
 
                 Locations.Add(tmpLocationInfo);
+                if (Locations.Count == 1)
+                {
+                    IsChecked = true;
+                }
+                else { IsChecked = false; }
             }
             catch (Exception exc)
             {
@@ -403,7 +426,10 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                     FixKit = null;
                 }
 
-                NewSpanAll = new List<SnapshotSpan>();
+                if (NewSpanAll.Count > 0)
+                {
+                    NewSpanAll.Clear();
+                }
                 CurrentSelectNum = 0;
 
                 Parallel.ForEach(ret, tuple =>
@@ -421,8 +447,12 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
                 {
                     return;
                 }
-
-                NormalizedSnapshotSpanCollection wordSpan = new NormalizedSnapshotSpanCollection(NewSpanAll);            
+            //    CaretMarginElement.UpdateMarginMatches(false);
+              
+                HighlightNo++;
+               
+          //      CaretMarginElement.OnPositionChanged(ss, ea);
+                NormalizedSnapshotSpanCollection wordSpan = new NormalizedSnapshotSpanCollection(NewSpanAll);
 
                 // TODO if the elements of a line is bigger than 1, the position need to fix.
                 var curSelection = wordSpan.AsParallel().Select((item, index) => new { Item = item, Index = index })
@@ -531,7 +561,9 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
 
                 SnapshotPoint tmpStart;
                 SnapshotPoint tmpEnd;
-                if (FixKit != null && FixKit.Item1.IsMatch(SourceCode.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1)))
+                var fragment = SourceCode.Substring(startAndEnd.Item1, startAndEnd.Item2 - startAndEnd.Item1);
+                OutputMsg(fragment);
+                if (FixKit != null && FixKit.Item1.IsMatch(fragment))
                 {
                     tmpStart = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item1 + FixKit.Item2.Item1);
                     tmpEnd = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item2 - FixKit.Item2.Item2);
@@ -548,6 +580,14 @@ ITextStructureNavigator textStructureNavigator, EnvDTE.Document document)
             catch (Exception exc)
             {
                 Debug.Write(exc.ToString());
+            }
+        }
+
+        private void OutputMsg(string strMsg)
+        {
+            if (OutputWindow != null)
+            {
+                OutputWindow.WriteLine(strMsg);
             }
         }
 

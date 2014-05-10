@@ -16,11 +16,11 @@ namespace SimilarHighlight.Tests
 		[Test]
         [TestCase(@"../../../SimilarHighlight.Tests/InferenceTest.cs")]
 		public void TestGetSimilarElements(string path) {
-            //var processor = ProcessorLoader.CSharpUsingAntlr3;	// processorIdentifier indicates here
-            //var fileInfo = new FileInfo(path);					// fileInfoIdentifier indicates here
-            //var code = File.ReadAllText(path);
-            //var xml = processor.GenerateXml(fileInfo);
-            //var elements = xml.Descendants("identifier").ToList();
+			var processor = ProcessorLoader.CSharpUsingAntlr3;	// processorIdentifier indicates here
+			var fileInfo = new FileInfo(path);					// fileInfoIdentifier indicates here
+			var code = File.ReadAllText(path);
+			var xml = processor.GenerateXml(fileInfo);
+			var elements = xml.Descendants("identifier").ToList();
 
 			// Create locatoin information that user selects in the editor
 			//
@@ -33,16 +33,16 @@ namespace SimilarHighlight.Tests
 			// using CodeRange.ConvertFromIndicies()
 			//
 
-            //var firstRange = CodeRange.Locate(elements.First(e => e.TokenText() == "processor"));
-            //var secondRange = CodeRange.Locate(elements.First(e => e.TokenText() == "fileInfo"));
-            //var processorIdentifier = new LocationInfo {
-            //    CodeRange = firstRange,
-            //    XElement = firstRange.FindOutermostElement(xml),
-            //};
-            //var fileInfoIdentifier = new LocationInfo {
-            //    CodeRange = secondRange,
-            //    XElement = secondRange.FindOutermostElement(xml),
-            //};
+            var firstRange = CodeRange.Locate(elements.First(e => e.TokenText() == "processor"));
+            var secondRange = CodeRange.Locate(elements.First(e => e.TokenText() == "fileInfo"));
+			var processorIdentifier = new LocationInfo {
+                CodeRange = firstRange,
+                XElement = firstRange.FindOutermostElement(xml),
+			};
+			var fileInfoIdentifier = new LocationInfo {
+                CodeRange = secondRange,
+                XElement = secondRange.FindOutermostElement(xml),
+			};
 
 			// Get similar nodes
             //var ret = Inferrer.GetSimilarElements(processor, new[] { processorIdentifier, fileInfoIdentifier },

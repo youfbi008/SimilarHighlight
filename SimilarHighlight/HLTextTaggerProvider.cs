@@ -14,6 +14,7 @@ using Microsoft.VisualStudio.Utilities;
 using EnvDTE;
 using EnvDTE80;
 using System.Diagnostics;
+using SimilarHighlight.OutputWindow;
 
 namespace SimilarHighlight
 {
@@ -23,16 +24,17 @@ namespace SimilarHighlight
     internal class HLTextTaggerProvider : IViewTaggerProvider
     {
         [Import]
-        internal ITextSearchService TextSearchService { get; set; }
-
-        [Import]
-        internal ITextStructureNavigatorSelectorService TextStructureNavigatorSelector { get; set; }
-
-        [Import]
         internal ITextDocumentFactoryService TextDocumentFactoryService { get; set; }
 
         [Import]
+        internal IOutputWindowService OutputWindowService { get; set; }
+
+        [Import]
         internal SVsServiceProvider ServiceProvider = null;
+
+        
+   
+        private IOutputWindowPane outputWindow { get; set; }
 
         public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
         {
@@ -44,21 +46,25 @@ namespace SimilarHighlight
             ITextDocument textDocument = null;
 
             TextDocumentFactoryService.TryGetTextDocument(buffer, out textDocument);
-            
+            if (outputWindow == null)
+            {
+                outputWindow = OutputWindowService.TryGetPane("Similar");
+            }
+            //    outputWindow.WriteLine("12312312312");
             //EnvDTE80.DTE2 dte2;
             //dte2 = (EnvDTE80.DTE2)System.Runtime.InteropServices.Marshal.
             //GetActiveObject("VisualStudio.DTE.11.0");
 
             EnvDTE.Document nowDocument = null;
 
-            DTE dte2 = (DTE)ServiceProvider.GetService(typeof(DTE));
+            DTE dte = (DTE)ServiceProvider.GetService(typeof(DTE));
 
-            if (dte2 == null)
+            if (dte == null)
                 Trace.WriteLine("did not get dte reference");
             else
             {
                 
-                foreach (var item in dte2.Documents)
+                foreach (var item in dte.Documents)
                 {
                     var doc = item as EnvDTE.Document;
                     var name = doc.FullName;
@@ -70,10 +76,8 @@ namespace SimilarHighlight
                 }
             }
 
-            ITextStructureNavigator textStructureNavigator =
-                TextStructureNavigatorSelector.GetTextStructureNavigator(buffer);
 
-            return new HLTextTagger(textView as IWpfTextView, buffer, TextSearchService, textStructureNavigator, nowDocument) as ITagger<T>;
+            return new HLTextTagger(textView as IWpfTextView, buffer, nowDocument, outputWindow) as ITagger<T>;
         }
     }
 }
