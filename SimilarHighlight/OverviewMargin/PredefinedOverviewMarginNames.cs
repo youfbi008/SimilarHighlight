@@ -12,15 +12,5 @@ namespace SimilarHighlight.OverviewMargin
         /// <remarks>The OverviewMargin implements the <see cref="IOverviewMargin"/> interface, which can be used to get an <see cref="IVerticalScrollBar"/>
         /// to map between buffer positions and y-coordinates.</remarks>
         public const string Overview = "Overview";
-
-        /// <summary>
-        /// A child of the overview margin that shows whole document change tracking information.
-        /// </summary>
-        public const string OverviewMark = "OverviewMark";
-
-        /// <summary>
-        /// A child of the overview margin that shows whole document change tracking information.
-        /// </summary>
-        public const string OverviewChangeTracking = "OverviewChangeTracking";
     }
 }

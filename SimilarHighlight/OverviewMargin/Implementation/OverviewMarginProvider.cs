@@ -38,9 +38,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         [Import]
         internal IEditorOptionsFactoryService EditorOptionsFactoryService { get; private set; }
 
-        [ImportMany]
-        private List<Lazy<IOverviewTipFactoryProvider, ITipMetadata>> _tipProviders;
-
         [Import(AllowDefault = true)]
         internal ISettingsStore _settingsStore { get; set; }
 
@@ -60,20 +57,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
                 return _settingsStore.SaveOption(options, optionName);
             }
             return false;
-        }
-
-        private IList<Lazy<IOverviewTipFactoryProvider, ITipMetadata>> _orderedTipProviders;
-        internal IList<Lazy<IOverviewTipFactoryProvider, ITipMetadata>> OrderedTipProviders
-        {
-            get
-            {
-                if (_orderedTipProviders == null)
-                {
-                    _orderedTipProviders = Orderer.Order<IOverviewTipFactoryProvider, ITipMetadata>(_tipProviders);
-                }
-
-                return _orderedTipProviders;
-            }
         }
 
         private IList<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> _orderedMarginProviders;

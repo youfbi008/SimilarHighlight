@@ -451,11 +451,9 @@ namespace SimilarHighlight
                 {
                     return;
                 }
-            //    CaretMarginElement.UpdateMarginMatches(false);
               
                 HighlightNo++;
                
-          //      CaretMarginElement.OnPositionChanged(ss, ea);
                 NormalizedSnapshotSpanCollection wordSpan = new NormalizedSnapshotSpanCollection(NewSpanAll);
 
                 // TODO if the elements of a line is bigger than 1, the position need to fix.

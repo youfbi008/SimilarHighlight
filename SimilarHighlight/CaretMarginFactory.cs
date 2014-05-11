@@ -13,7 +13,7 @@ namespace SimilarHighlight
     
     [Name(CaretMargin.Name)]
     [MarginContainer(PredefinedOverviewMarginNames.Overview)]
-    [Order(After = PredefinedOverviewMarginNames.OverviewMark, Before = "Structure")]
+//    [Order(After = PredefinedOverviewMarginNames.OverviewMark, Before = "Structure")]
     [ContentType("text")]
     [TextViewRole(PredefinedTextViewRoles.Interactive)]
     sealed class CaretMarginFactory : IWpfTextViewMarginProvider

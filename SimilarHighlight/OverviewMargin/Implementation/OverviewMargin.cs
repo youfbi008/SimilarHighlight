@@ -47,14 +47,13 @@ namespace SimilarHighlight.OverviewMargin.Implementation
     /// relative to the entire document (optionally including elided regions) and supports
     /// click navigation.
     /// </summary>
-    internal class OverviewMargin : ContainerMargin, IOverviewMargin, IOverviewTipFactory
+    internal class OverviewMargin : ContainerMargin, IOverviewMargin
     {
         #region Private Members
         const double VerticalPadding = 1.0;
-        const double LeftPadding = 4.0;
-        const double RightPadding = 3.0;
+        const double LeftPadding = 8.0;
+        const double RightPadding = 6.0;
         const double MinViewportHeight = 5.0; // smallest that viewport extent will be drawn
-        const double TipWindowDelay = 200.0;
 
         private readonly Brush _elisionBrush; // background of elided regions
         private readonly Brush _offScreenBrush; // background for document areas outside of viewport extent
@@ -64,14 +63,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
 
         private SimpleScrollBar _scrollBar;
 
-        private DateTime? _showTipWhen;
-        private ToolTip _tipWindow;
-        private IWpfTextView _tipView;
-        private IProjectionBuffer _tipBuffer;
         private OverviewMarginProvider _provider;
-
-        IList<Lazy<IOverviewTipFactoryProvider, ITipMetadata>> _orderedTipFactoryProviders = new List<Lazy<IOverviewTipFactoryProvider, ITipMetadata>>();
-        private IList<IOverviewTipFactory> _tipFactories;
 
         public static readonly EditorOptionKey<Color> ElisionColorId = new EditorOptionKey<Color>("OverviewMarginImpl/ElisionColor");
         public static readonly EditorOptionKey<Color> OffScreenColorId = new EditorOptionKey<Color>("OverviewMarginImpl/OffScreenColor");
@@ -86,8 +78,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         {
             _provider = myProvider;
 
-            _provider.LoadOption(base.TextViewHost.TextView.Options, DefaultOverviewMarginOptions.ExpandElisionsInOverviewMarginId.Name);
-            _provider.LoadOption(base.TextViewHost.TextView.Options, DefaultOverviewMarginOptions.PreviewSizeId.Name);
+      //      _provider.LoadOption(base.TextViewHost.TextView.Options, DefaultOverviewMarginOptions.ExpandElisionsInOverviewMarginId.Name);
 
             _provider.LoadOption(base.TextViewHost.TextView.Options, OverviewMargin.ElisionColorId.Name);
             _provider.LoadOption(base.TextViewHost.TextView.Options, OverviewMargin.OffScreenColorId.Name);
@@ -95,7 +86,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
 
             _outliningManager = myProvider.OutliningManagerService.GetOutliningManager(textViewHost.TextView);
 
-            _scrollBar = new SimpleScrollBar(textViewHost, containerMargin, myProvider._scrollMapFactory, this, !base.TextViewHost.TextView.Options.GetOptionValue(DefaultOverviewMarginOptions.ExpandElisionsInOverviewMarginId));
+            _scrollBar = new SimpleScrollBar(textViewHost, containerMargin, myProvider._scrollMapFactory, this, false);
 
             _elisionBrush = this.GetBrush(OverviewMargin.ElisionColorId);
             _offScreenBrush = this.GetBrush(OverviewMargin.OffScreenColorId);
@@ -106,13 +97,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
 
             {
                 var viewRoles = this.TextViewHost.TextView.Roles;
-                //foreach (var tipProvider in myProvider.OrderedTipProviders)
-                //{
-                //    if (viewRoles.ContainsAny(tipProvider.Metadata.TextViewRoles))
-                //    {
-                //        _orderedTipFactoryProviders.Add(tipProvider);
-                //    }
-                //}
             }
 
             base.TextViewHost.TextView.Options.OptionChanged += this.OnOptionsChanged;
@@ -136,13 +120,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         {
             base.TextViewHost.TextView.Options.OptionChanged -= this.OnOptionsChanged;
             UnregisterEvents();
-
-            //this.CloseTip();
-            if (_tipView != null)
-            {
-                _tipView.Close();
-                _tipView = null;
-            }
 
             base.Close();
         }
@@ -173,71 +150,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         }
         #endregion
 
-        #region IOverviewTipFactory members
-        public bool UpdateTip(IOverviewMargin margin, MouseEventArgs e, ToolTip tip)
-        {
-            int tipSize = base.TextViewHost.TextView.Options.GetOptionValue(DefaultOverviewMarginOptions.PreviewSizeId);
-            if (tipSize != 0)
-            {
-                Point pt = e.GetPosition(this);
-
-                if (_tipBuffer == null)
-                {
-                    _tipBuffer = _provider.ProjectionFactory.CreateProjectionBuffer(null, new List<object>(0), ProjectionBufferOptions.None);
-
-                    _tipView = _provider.EditorFactory.CreateTextView(new VacuousTextViewModel(_tipBuffer, base.TextViewHost.TextView.TextViewModel.DataModel),
-                                                                      base.TextViewHost.TextView.Roles, _provider.EditorOptionsFactoryService.GlobalOptions);
-                    _tipView.Options.SetOptionValue(DefaultTextViewOptions.IsViewportLeftClippedId, false);
-                    _tipView.Options.SetOptionValue(DefaultWpfViewOptions.AppearanceCategory,
-                                base.TextViewHost.TextView.Options.GetOptionValue(DefaultWpfViewOptions.AppearanceCategory));
-                }
-
-                if (_tipBuffer.CurrentSnapshot.SpanCount == 0)
-                {
-                    //Track the entire buffer (we use a projection buffer rather than simply the TextView's TextBuffer because -- when the preview isn't visible --
-                    //we don't want to spend time reacting to text changes, etc.).
-                    _tipBuffer.InsertSpan(0, base.TextViewHost.TextView.TextSnapshot.CreateTrackingSpan(0, base.TextViewHost.TextView.TextSnapshot.Length, SpanTrackingMode.EdgeInclusive));
-                }
-
-                double viewHeight = ((double)tipSize) * _tipView.LineHeight;
-                SnapshotPoint position = _scrollBar.GetBufferPositionOfYCoordinate(pt.Y);
-
-                _tipView.DisplayTextLineContainingBufferPosition(new SnapshotPoint(_tipView.TextSnapshot, position.Position), viewHeight * 0.5, ViewRelativePosition.Bottom,
-                                                                 null, viewHeight);
-
-                double left = double.MaxValue;
-                foreach (ITextViewLine line in _tipView.TextViewLines)
-                {
-                    //Find the first non-whitespace character on the line
-                    for (int i = line.Start.Position; (i < line.End.Position); ++i)
-                    {
-                        if (!char.IsWhiteSpace(line.Snapshot[i]))
-                        {
-                            double l = line.GetCharacterBounds(new SnapshotPoint(line.Snapshot, i)).Left;
-                            if (l < left)
-                                left = l;
-                            break;
-                        }
-                    }
-                }
-
-                _tipView.ViewportLeft = (left == double.MaxValue) ? 0.0 : (left * 0.75); //Compress most of the indentation (but leave a little)
-
-                //The width of the view is in zoomed coordinates so factor the zoom factor into the tip window width computation.
-                double zoom = base.TextViewHost.TextView.ZoomLevel / 100.0;
-                _tipWindow.MinWidth = _tipWindow.MaxWidth = Math.Floor(Math.Max(50.0, base.TextViewHost.TextView.ViewportWidth * zoom * 0.5));
-                _tipWindow.MinHeight = _tipWindow.MaxHeight = 8.0 + viewHeight;
-
-                _tipWindow.IsOpen = true;
-                _tipWindow.Content = _tipView.VisualElement;
-
-                return true;
-            }
-
-            return false;
-        }
-        #endregion
-
         // RegisterEvents() will be called for the first time from Initialize()
         protected override void RegisterEvents()
         {
@@ -247,13 +159,9 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             _scrollBar.TrackSpanChanged += OnTrackSpanChanged;
 
             this.MouseLeftButtonDown += OnMouseLeftButtonDown;
-            this.MouseRightButtonDown += OnMouseRightButtonDown;
 
             this.MouseMove += OnMouseMove;
-            this.MouseEnter += OnMouseEnter;
-            this.MouseLeave += OnMouseLeave;
             this.MouseLeftButtonUp += OnMouseLeftButtonUp;
-            this.TextViewHost.TextView.TextDataModel.ContentTypeChanged += OnContentTypeChanged;
 
         }
 
@@ -265,21 +173,12 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             _scrollBar.TrackSpanChanged -= OnTrackSpanChanged;
 
             this.MouseLeftButtonDown -= OnMouseLeftButtonDown;
-            this.MouseRightButtonDown -= OnMouseRightButtonDown;
 
             this.MouseMove -= OnMouseMove;
-            this.MouseEnter -= OnMouseEnter;
-            this.MouseLeave -= OnMouseLeave;
             this.MouseLeftButtonUp -= OnMouseLeftButtonUp;
-            this.TextViewHost.TextView.TextDataModel.ContentTypeChanged -= OnContentTypeChanged;
         }
 
         #region Event Handlers
-
-        void OnContentTypeChanged(object sender, TextDataModelContentTypeChangedEventArgs e)
-        {
-            _tipFactories = null;
-        }
 
         private void OnLayoutChanged(object sender, TextViewLayoutChangedEventArgs e)
         {
@@ -297,30 +196,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             // has no children, it is inactive.
 
             var options = base.TextViewHost.TextView.Options;
-            if (DefaultOverviewMarginOptions.ExpandElisionsInOverviewMarginId.Name.Equals(e.OptionId))
-            {
-                _scrollBar.UseElidedCoordinates = !options.GetOptionValue(DefaultOverviewMarginOptions.ExpandElisionsInOverviewMarginId); //This will generate a track changed event, invalidating the view.
-            }
-            else if (DefaultOverviewMarginOptions.PreviewSizeId.Name.Equals(e.OptionId))
-            {
-                if (_tipFactories != null)
-                {
-                    if (options.GetOptionValue(DefaultOverviewMarginOptions.PreviewSizeId) != 0)
-                    {
-                        if ((_tipFactories.Count == 0) || (_tipFactories[_tipFactories.Count - 1] != this))
-                        {
-                            _tipFactories.Add(this);
-                        }
-                    }
-                    else
-                    {
-                        if ((_tipFactories.Count > 0) && (_tipFactories[_tipFactories.Count - 1] == this))
-                        {
-                            _tipFactories.RemoveAt(_tipFactories.Count - 1);
-                        }
-                    }
-                }
-            }
 
             // TODO: handle margin show/hide status -> (Un)RegisterEvents()
         }
@@ -329,36 +204,13 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         {
             this.CaptureMouse();
 
-            //this.CloseTip();
-
             Point pt = e.GetPosition(this);
             this.ScrollViewToYCoordinate(pt.Y, e.ClickCount == 2);
-        }
-
-        void OnMouseRightButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            //this.CloseTip();
-
-            if (this.ContextMenu == null)
-            {
-                ContextMenu context = new ContextMenu();
-
-                AddBoolEntry(context, DefaultOverviewMarginOptions.ExpandElisionsInOverviewMarginId, Strings.ExpandElisions);
-                AddPreviewEntry(context, DefaultOverviewMarginOptions.PreviewSizeId, Strings.ShowTip);
-
-                context.Closed += delegate { this.ContextMenu = null; };
-                this.ContextMenu = context;
-            }
         }
 
         void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             this.ReleaseMouseCapture();
-        }
-
-        void OnMouseEnter(object sender, MouseEventArgs e)
-        {
-            _showTipWhen = DateTime.Now.AddMilliseconds(TipWindowDelay);
         }
 
         void OnMouseMove(object sender, MouseEventArgs e)
@@ -368,16 +220,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
                 Point pt = e.GetPosition(this);
                 this.ScrollViewToYCoordinate(pt.Y, false);
             }
-            else if (_showTipWhen.HasValue && (DateTime.Now > _showTipWhen.Value))
-            {
-                //this.OpenTip(e);
-            }
-        }
-
-        void OnMouseLeave(object sender, MouseEventArgs e)
-        {
-            _showTipWhen = null;
-            //this.CloseTip();
         }
 
         protected override void OnRender(DrawingContext drawingContext)
@@ -395,117 +237,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             }
         }
         #endregion
-
-        private void AddBoolEntry(ContextMenu context, EditorOptionKey<bool> key, string label)
-        {
-            MenuItem item = new MenuItem();
-            item.IsCheckable = true;
-            item.IsChecked = base.TextViewHost.TextView.Options.GetOptionValue(key);
-            item.Header = label;
-            item.Click += delegate
-            {
-                base.TextViewHost.TextView.Options.SetOptionValue(key, item.IsChecked);
-                _provider.SaveOption(base.TextViewHost.TextView.Options, key.Name);
-            };
-            context.Items.Add(item);
-        }
-
-        private void AddPreviewEntry(ContextMenu context, EditorOptionKey<int> key, string label)
-        {
-            MenuItem item = new MenuItem();
-            item.IsCheckable = true;
-            item.IsChecked = base.TextViewHost.TextView.Options.GetOptionValue(key) != 0;
-            item.Header = label;
-            item.Click += delegate
-            {
-                base.TextViewHost.TextView.Options.SetOptionValue(key, item.IsChecked ? 7 : 0);
-                _provider.SaveOption(base.TextViewHost.TextView.Options, key.Name);
-            };
-            context.Items.Add(item);
-        }
-
-        //private void OpenTip(MouseEventArgs e)
-        //{
-        //    this.EnsureTipFactories();
-        //    if (_tipFactories.Count > 0)
-        //    {
-        //        if (_tipWindow == null)
-        //        {
-        //            _tipWindow = new ToolTip();
-
-        //            _tipWindow.ClipToBounds = true;
-
-        //            _tipWindow.Placement = PlacementMode.Left;
-        //            _tipWindow.PlacementTarget = base.TextViewHost.TextView.VisualElement;
-
-        //            _tipWindow.HorizontalContentAlignment = HorizontalAlignment.Left;
-
-        //            _tipWindow.VerticalAlignment = VerticalAlignment.Top;
-        //            _tipWindow.VerticalContentAlignment = VerticalAlignment.Top;
-
-        //            _tipWindow.HorizontalOffset = 0.0;
-        //            _tipWindow.VerticalOffset = 0.0;
-        //        }
-
-        //        //Compensate for zoom since the placement rectangle is specified in terms of the view's coordinate system and not
-        //        //the margin's (which doesn't zoomed).
-        //        double zoom = base.TextViewHost.TextView.ZoomLevel / 100.0;
-        //        _tipWindow.PlacementRectangle = new Rect(base.TextViewHost.TextView.ViewportRight, e.GetPosition(this).Y / zoom, 0.0, 0.0);
-
-        //        foreach (var tipFactory in _tipFactories)
-        //        {
-        //            if (tipFactory.UpdateTip(this, e, _tipWindow))
-        //            {
-        //                return;
-        //            }
-        //        }
-
-        //        this.CloseTip();
-        //    }
-        //}
-
-        //private void EnsureTipFactories()
-        //{
-        //    if (_tipFactories == null)
-        //    {
-        //        _tipFactories = new List<IOverviewTipFactory>();
-
-        //        foreach (var tipFactoryProvider in _orderedTipFactoryProviders)
-        //        {
-        //            foreach (string contentType in tipFactoryProvider.Metadata.ContentTypes)
-        //            {
-        //                if (this.TextViewHost.TextView.TextDataModel.ContentType.IsOfType(contentType))
-        //                {
-        //                    var factory = tipFactoryProvider.Value.GetOverviewTipFactory(this, this.TextViewHost.TextView);
-        //                    if (factory != null)
-        //                        _tipFactories.Add(factory);
-
-        //                    break;
-        //                }
-        //            }
-        //        }
-
-        //        int tipSize = base.TextViewHost.TextView.Options.GetOptionValue(DefaultOverviewMarginOptions.PreviewSizeId);
-        //        if (tipSize != 0)
-        //            _tipFactories.Add(this);
-        //    }
-        //}
-
-        //private void CloseTip()
-        //{
-        //    if (_tipWindow != null)
-        //    {
-        //        _tipWindow.Content = null;
-        //        _tipWindow.IsOpen = false;
-        //        _tipWindow = null;
-
-        //        if (_tipBuffer != null)
-        //        {
-        //            //Stop tracking the view's buffer.
-        //            _tipBuffer.DeleteSpans(0, _tipBuffer.CurrentSnapshot.SpanCount);
-        //        }
-        //    }
-        //}
 
         /// <summary>
         /// Scroll the view so that the location corresponding to the specified coordinate

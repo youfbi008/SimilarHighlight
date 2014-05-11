@@ -120,7 +120,4 @@
   <data name="ExpandElisions" xml:space="preserve">
     <value>Expand elisions</value>
   </data>
-  <data name="ShowTip" xml:space="preserve">
-    <value>Show tips</value>
-  </data>
 </root>

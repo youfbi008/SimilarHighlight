@@ -68,14 +68,5 @@ namespace SimilarHighlight.OverviewMargin.Implementation {
                 return ResourceManager.GetString("ExpandElisions", resourceCulture);
             }
         }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Show tips.
-        /// </summary>
-        internal static string ShowTip {
-            get {
-                return ResourceManager.GetString("ShowTip", resourceCulture);
-            }
-        }
     }
 }

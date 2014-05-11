@@ -48,10 +48,10 @@ namespace SimilarHighlight
     [Export(typeof(EditorOptionDefinition))]
     internal sealed class MarginWidth : EditorOptionDefinition<double>
     {
-        public override double Default { get { return 5.0; } }
+        public override double Default { get { return 6.0; } }
         public override bool IsValid(ref double proposedValue)
         {
-            return (proposedValue >= 3.0) && (proposedValue <= 20.0);
+            return (proposedValue >= 3.0) && (proposedValue <= 60.0);
         }
         public override EditorOptionKey<double> Key { get { return CaretMarginElement.MarginWidthId; } }
     }
@@ -88,28 +88,6 @@ namespace SimilarHighlight
         public static readonly EditorOptionKey<Color> AdornmentMatchColorId = new EditorOptionKey<Color>("CaretMargin/AdornmentMatchColor");
         public static readonly EditorOptionKey<double> MarginWidthId = new EditorOptionKey<double>("CaretMargin/MarginWidth");
         public static readonly string CaretMarginRoot = "CaretMargin/CaretMarginRoot";
-        CaretMarginFactory ff = null;
-        //private  int drawItem;
-        //public  int DrawItem
-        //{
-        //    get {return drawItem;}
-        //    set 
-        //    {
-        //        drawItem=value;
-        //        this.InvalidateVisual();
-        //    }
-        //}
-
-        //[Export(typeof(Redraw))]
-        //public void Redraw()
-        //{
-        //    this.InvalidateVisual();
-        //}
-
-        //public CaretMarginElement() {
-            
-        //   // CaretMarginElement(this.textView, this.ff, this.scrollBar);
-        //}
 
         /// <summary>
         /// Constructor for the CaretMarginElement.
@@ -129,7 +107,6 @@ namespace SimilarHighlight
             factory.LoadOption(textView.Options, CaretMarginElement.AdornmentMatchColorId.Name);
             factory.LoadOption(textView.Options, CaretMarginElement.MarginWidthId.Name);
 
-            this.ff = factory;
             this.scrollBar = verticalScrollbar;
 
             //Make our width big enough to see, but not so big that it consumes a lot of
@@ -524,7 +501,7 @@ namespace SimilarHighlight
         private void DrawMark(DrawingContext drawingContext, Brush brush, double y)
         {
             drawingContext.DrawRectangle(brush, null,
-                                         new Rect(MarkPadding, y - (MarkThickness * 0.5), 5 + this.Width - MarkPadding * 2.0, MarkThickness));
+                                         new Rect(MarkPadding, y - (MarkThickness * 0.5), this.Width - MarkPadding * 2.0, MarkThickness));
         }
 
         /// <summary>

@@ -18,10 +18,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         IEnumerable<string> TextViewRoles { get; }
     }
 
-    public interface ITipMetadata : IOrderable, IContentTypeMetadata, ITextViewRoleMetadata
-    {
-    }
-
     public interface IWpfTextViewMarginMetadata : IOrderable, IContentTypeMetadata, ITextViewRoleMetadata
     {
         /// <summary>
