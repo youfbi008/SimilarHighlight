@@ -121,9 +121,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AstInferrer.cs" />
-    <Compile Include="CaretMargin.cs" />
-    <Compile Include="CaretMarginElement.cs" />
-    <Compile Include="CaretMarginFactory.cs" />
+    <Compile Include="CaretMargin.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="CaretMarginElement.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="CaretMarginFactory.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="CstInferrer.cs" />
     <Compile Include="HLTextFormatDefinition.cs" />
     <Compile Include="HLTextTag.cs" />

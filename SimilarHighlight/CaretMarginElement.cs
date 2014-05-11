@@ -79,7 +79,7 @@ namespace SimilarHighlight
 
         private bool hasEvents = false;
 
-        const double MarkPadding = 1.0;
+        const double MarkPadding = -4.5;
         const double MarkThickness = 4.0;
 
         public static readonly EditorOptionKey<bool> EnabledOptionId = new EditorOptionKey<bool>("CaretMargin/Enabled");
@@ -485,7 +485,7 @@ namespace SimilarHighlight
 
                 //Take a snapshot of the matches found to date (this could still be changing
                 //if the search has not completed yet).
-                IList<SnapshotSpan> matches = this.search.Matches;
+                IList<SnapshotSpan> matches = HLTextTagger.NewSpanAll;
 
                 try
                 {
@@ -524,7 +524,7 @@ namespace SimilarHighlight
         private void DrawMark(DrawingContext drawingContext, Brush brush, double y)
         {
             drawingContext.DrawRectangle(brush, null,
-                                         new Rect(MarkPadding, y - (MarkThickness * 0.5), this.Width - MarkPadding * 2.0, MarkThickness));
+                                         new Rect(MarkPadding, y - (MarkThickness * 0.5), 5 + this.Width - MarkPadding * 2.0, MarkThickness));
         }
 
         /// <summary>
@@ -610,29 +610,29 @@ namespace SimilarHighlight
                     //for (int i = 0; i < 10; i++)
                     //{
     
-                        System.Threading.Thread.Sleep(500);
+                    //    System.Threading.Thread.Sleep(200);
                         if (CaretMarginElement.OldHighlightNo != HLTextTagger.HighlightNo)
                         {
                             CaretMarginElement.OldHighlightNo = HLTextTagger.HighlightNo;
                             matches = HLTextTagger.NewSpanAll;
                             //break;
                         }
-                        else {
+                        //else {
 
-                            System.Threading.Thread.Sleep(200);
-                            if (CaretMarginElement.OldHighlightNo != HLTextTagger.HighlightNo)
-                            {
-                                CaretMarginElement.OldHighlightNo = HLTextTagger.HighlightNo;
-                                matches = HLTextTagger.NewSpanAll;
-                                //break;
-                            }
-                            else
-                            {
-                                System.Threading.Thread.Sleep(200);
-                                CaretMarginElement.OldHighlightNo = HLTextTagger.HighlightNo;
-                                matches = HLTextTagger.NewSpanAll;
-                            }
-                        }
+                        //    System.Threading.Thread.Sleep(200);
+                        //    if (CaretMarginElement.OldHighlightNo != HLTextTagger.HighlightNo)
+                        //    {
+                        //        CaretMarginElement.OldHighlightNo = HLTextTagger.HighlightNo;
+                        //        matches = HLTextTagger.NewSpanAll;
+                        //        //break;
+                        //    }
+                        //    else
+                        //    {
+                        //        System.Threading.Thread.Sleep(200);
+                        //        CaretMarginElement.OldHighlightNo = HLTextTagger.HighlightNo;
+                        //        matches = HLTextTagger.NewSpanAll;
+                        //    }
+                        //}
                     //}
                     //while (true) {
                     //    if (CaretMarginElement.oldHighlightNo != HLTextTagger.HighlightNo)

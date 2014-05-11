@@ -15,6 +15,7 @@ using EnvDTE;
 using EnvDTE80;
 using System.Diagnostics;
 using SimilarHighlight.OutputWindow;
+using SimilarHighlight.OverviewMargin.Implementation;
 
 namespace SimilarHighlight
 {
@@ -32,38 +33,29 @@ namespace SimilarHighlight
         [Import]
         internal SVsServiceProvider ServiceProvider = null;
 
-        
-   
+        [ImportMany]
+        internal List<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> marginProviders;
+
+        private IWpfTextViewMarginProvider caretMarginFactory { get; set; }
         private IOutputWindowPane outputWindow { get; set; }
+        
 
         public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
         {
             //provide highlighting only on the top buffer
             if (textView.TextBuffer != buffer)
                 return null;
-            //  DTE2 dte = Package.GetGlobalService(typeof(DTE)) as DTE2;
 
             ITextDocument textDocument = null;
-
-            TextDocumentFactoryService.TryGetTextDocument(buffer, out textDocument);
-            if (outputWindow == null)
-            {
-                outputWindow = OutputWindowService.TryGetPane("Similar");
-            }
-            //    outputWindow.WriteLine("12312312312");
-            //EnvDTE80.DTE2 dte2;
-            //dte2 = (EnvDTE80.DTE2)System.Runtime.InteropServices.Marshal.
-            //GetActiveObject("VisualStudio.DTE.11.0");
-
             EnvDTE.Document nowDocument = null;
 
+            TextDocumentFactoryService.TryGetTextDocument(buffer, out textDocument);
             DTE dte = (DTE)ServiceProvider.GetService(typeof(DTE));
 
             if (dte == null)
                 Trace.WriteLine("did not get dte reference");
             else
             {
-                
                 foreach (var item in dte.Documents)
                 {
                     var doc = item as EnvDTE.Document;
@@ -76,8 +68,25 @@ namespace SimilarHighlight
                 }
             }
 
+            // A margin factory to add a right marigin which mark highlighted elements' points.
+            if (caretMarginFactory == null)
+            {
+                foreach (var marginProvider in marginProviders)
+                {
+                    if (String.Compare(marginProvider.Metadata.Name, "Caret", StringComparison.OrdinalIgnoreCase) == 0)
+                    {
+                        caretMarginFactory = marginProvider.Value;
+                    }
+                }
+            }
 
-            return new HLTextTagger(textView as IWpfTextView, buffer, nowDocument, outputWindow) as ITagger<T>;
+            // A output pane named "Similar" will be added to display some information.
+            if (outputWindow == null)
+            {
+                outputWindow = OutputWindowService.TryGetPane("Similar");
+            }
+
+            return new HLTextTagger(textView as IWpfTextView, buffer, nowDocument, outputWindow, caretMarginFactory) as ITagger<T>;
         }
     }
 }

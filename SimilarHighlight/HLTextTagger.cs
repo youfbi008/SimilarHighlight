@@ -26,6 +26,8 @@ using Code2Xml.Languages.ANTLRv3.Processors.Java;
 using System.Collections;
 using Code2Xml.Core.Generators;
 using SimilarHighlight.OutputWindow;
+using SimilarHighlight.OverviewMargin.Implementation;
+using System.Windows.Threading;
 
 
 namespace SimilarHighlight
@@ -97,14 +99,15 @@ namespace SimilarHighlight
 		// CST : 0;  AST : 1;
         private int treeType = 0;
         private IOutputWindowPane OutputWindow;
-        [Import]
-        internal IWpfTextViewMarginProvider WpfTextViewMarginProvider;
 
-        public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, EnvDTE.Document document, IOutputWindowPane outputWindow)
+        CaretMarginFactory CaretMarginFactory;
+
+        public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, EnvDTE.Document document,
+            IOutputWindowPane outputWindow, IWpfTextViewMarginProvider caretMarginFactory)
         {
             try
             {
-                
+                CaretMarginFactory = caretMarginFactory as CaretMarginFactory;
                 if (document == null)
                     return;
 
@@ -251,6 +254,7 @@ namespace SimilarHighlight
             {
                 // Highlight by background thread.
                 ThreadStartHighlighting();
+                
             }
         }
 
@@ -465,7 +469,11 @@ namespace SimilarHighlight
                     // TODO temp  added
                     TMPCurrentSelectNum = CurrentSelectNum;
                 }
-
+                Application.Current.Dispatcher.Invoke((Action)(() =>
+                {
+                    CaretMarginFactory.caretMargin.caretMarginElement.InvalidateVisual();
+                }));
+               
                 // If another change hasn't happened, do a real update
                 if (currentSelection == RequestSelection)
                     SynchronousUpdate(currentSelection, wordSpan, CurrentWordForCheck);

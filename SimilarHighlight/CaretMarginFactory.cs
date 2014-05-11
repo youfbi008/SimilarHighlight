@@ -14,8 +14,6 @@ namespace SimilarHighlight
     [Name(CaretMargin.Name)]
     [MarginContainer(PredefinedOverviewMarginNames.Overview)]
     [Order(After = PredefinedOverviewMarginNames.OverviewMark, Before = "Structure")]
-    //[MarginContainer(PredefinedMarginNames.VerticalScrollBarContainer)]
-    //[Order(After = PredefinedMarginNames.VerticalScrollBar, Before = "Structure")]
     [ContentType("text")]
     [TextViewRole(PredefinedTextViewRoles.Interactive)]
     sealed class CaretMarginFactory : IWpfTextViewMarginProvider
@@ -38,7 +36,7 @@ namespace SimilarHighlight
             }
             return false;
         }
-
+        public CaretMargin caretMargin;
         /// <summary>
         /// Create an instance of the CaretMargin in the specified <see cref="IWpfTextViewHost"/>.
         /// </summary>
@@ -53,7 +51,8 @@ namespace SimilarHighlight
                 //(since the definition of a word can change based on context).
 
                 //Create the caret margin, passing it a newly instantiated text structure navigator for the view.
-                return new CaretMargin(textViewHost, containerMarginAsOverviewMargin.ScrollBar, this);
+                this.caretMargin = new CaretMargin(textViewHost, containerMarginAsOverviewMargin.ScrollBar, this);
+                return this.caretMargin;
             }
             else
                 return null;

@@ -51,10 +51,10 @@ namespace SimilarHighlight.OutputWindow
                 const bool visible = true;
                 const bool clearWithSolution = false;
 
-                if (ErrorHandler.Failed(ErrorHandler.CallWithCOMConvention(() => outputWindow.CreatePane(ref guid, "Similar", Convert.ToInt32(visible), Convert.ToInt32(clearWithSolution)))))
+                if (ErrorHandler.Failed(ErrorHandler.CallWithCOMConvention(() => outputWindow.CreatePane(ref guid, definition.Metadata.Name, Convert.ToInt32(visible), Convert.ToInt32(clearWithSolution)))))
                     return null;
-
-                outputWindows.Add("Similar", guid);
+                
+                outputWindows.Add(definition.Metadata.Name, guid);
             }
 
             IVsOutputWindowPane vspane = null;
