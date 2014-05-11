@@ -21,8 +21,7 @@ ShortKeys:
 * C#(.cs)  
 * JAVA(.java)  
 * JavaScript(.js)  
-==================
-The operations in the next languages will not be perfect.I will fix them in future.
+※The operations in the next languages will not be perfect. I will fix them in future.
 * Python(.py)  
 * Ruby(.rb)  
 * Cobol(.cbl) Now some elements can be highlighted. You can test it use CobolTest.CBL.  
