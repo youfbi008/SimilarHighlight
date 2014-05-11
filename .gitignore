@@ -39,7 +39,7 @@ target
 
 # Ignore NuGet files
 nuspec/
-packages/
+#packages/
 
 # Ignore generated files for testing
 output
