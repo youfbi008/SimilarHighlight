@@ -1,23 +1,20 @@
-﻿// Copyright (c) Microsoft Corporation
-// All rights reserved
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.Composition;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
+using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Text.Editor;
+using Microsoft.VisualStudio.Text.Formatting;
+using Microsoft.VisualStudio.Text.Outlining;
+using Microsoft.VisualStudio.Text.Projection;
+using Microsoft.VisualStudio.Utilities;
 
 namespace SimilarHighlight.OverviewMargin.Implementation
 {
-    using System;
-    using System.Collections.Generic;
-    using System.ComponentModel.Composition;
-    using System.Windows;
-    using System.Windows.Controls;
-    using System.Windows.Controls.Primitives;
-    using System.Windows.Input;
-    using System.Windows.Media;
-    using Microsoft.VisualStudio.Text;
-    using Microsoft.VisualStudio.Text.Editor;
-    using Microsoft.VisualStudio.Text.Formatting;
-    using Microsoft.VisualStudio.Text.Outlining;
-    using Microsoft.VisualStudio.Text.Projection;
-    using Microsoft.VisualStudio.Utilities;
-
     [Export(typeof(EditorOptionDefinition))]
     public sealed class ElisionColor : ViewOptionDefinition<Color>
     {
@@ -649,64 +646,5 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             public event EventHandler TrackSpanChanged;
             #endregion
         }
-
-        internal class VacuousTextViewModel : ITextViewModel
-        {
-            ITextBuffer buffer;
-            private ITextDataModel dataModel;
-
-            public VacuousTextViewModel(ITextBuffer buffer, ITextDataModel dataModel)
-            {
-                this.buffer = buffer;
-                this.dataModel = dataModel;
-                this.Properties = new PropertyCollection();
-            }
-
-            public ITextDataModel DataModel
-            {
-                get { return this.dataModel; }
-            }
-
-            public ITextBuffer DataBuffer
-            {
-                get { return this.buffer; }
-            }
-
-            public ITextBuffer EditBuffer
-            {
-                get { return this.buffer; }
-            }
-
-            public ITextBuffer VisualBuffer
-            {
-                get { return this.buffer; }
-            }
-
-            public void Dispose()
-            {
-                GC.SuppressFinalize(this);
-            }
-
-            public PropertyCollection Properties { get; internal set; }
-
-            public SnapshotPoint GetNearestPointInVisualBuffer(SnapshotPoint editBufferPoint)
-            {
-                // The edit buffer is the same as the visual buffer, so just return the passed-in point.
-                return editBufferPoint;
-            }
-
-            public SnapshotPoint GetNearestPointInVisualSnapshot(SnapshotPoint editBufferPoint, ITextSnapshot targetVisualSnapshot, PointTrackingMode trackingMode)
-            {
-                // The edit buffer is the same as the visual buffer, so just return the passed-in point translated to the correct snapshot.
-                return editBufferPoint.TranslateTo(targetVisualSnapshot, trackingMode);
-            }
-
-            public bool IsPointInVisualBuffer(SnapshotPoint editBufferPoint, PositionAffinity affinity)
-            {
-                // The edit buffer is the same as the visual buffer, so just return true.
-                return true;
-            }
-        }
-
     }
 }

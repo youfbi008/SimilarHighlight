@@ -121,13 +121,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AstInferrer.cs" />
-    <Compile Include="CaretMargin.cs">
+    <Compile Include="RightMargin.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="CaretMarginElement.cs">
+    <Compile Include="RightMarginElement.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="CaretMarginFactory.cs">
+    <Compile Include="RightMarginFactory.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="CstInferrer.cs" />

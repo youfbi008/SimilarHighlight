@@ -1,16 +1,13 @@
-﻿// Copyright (c) Microsoft Corporation
-// All rights reserved
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Windows;
+using System.Windows.Controls;
+using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Text.Editor;
 
 namespace SimilarHighlight.OverviewMargin.Implementation
 {
-    using System;
-    using System.Collections.Generic;
-    using System.ComponentModel;
-    using System.Windows;
-    using System.Windows.Controls;
-    using Microsoft.VisualStudio.Text;
-    using Microsoft.VisualStudio.Text.Editor;
-
     /// <summary>
     /// A base class implementation of an editor margin that hosts other editor margins inside
     /// it. The control can be oriented either horizontally or vertically and supports ordered

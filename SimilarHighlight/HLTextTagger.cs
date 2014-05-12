@@ -80,7 +80,7 @@ namespace SimilarHighlight
         // Whether the shift key is pressed.
         bool IsShiftDown = false;
         // Whether the similar elements are needed to fix.
-        bool IsNeedFix = false;
+        bool IsNeedFix { get; set; }
         // the regex wheather need fix
         Regex RegexNeedFix { get; set; }
         // the forward offset when fixing
@@ -100,14 +100,14 @@ namespace SimilarHighlight
         private int treeType = 0;
         private IOutputWindowPane OutputWindow;
 
-        CaretMarginFactory CaretMarginFactory;
+        RightMarginFactory RightMarginFactory;
 
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, EnvDTE.Document document,
-            IOutputWindowPane outputWindow, IWpfTextViewMarginProvider caretMarginFactory)
+            IOutputWindowPane outputWindow, IWpfTextViewMarginProvider rightMarginFactory)
         {
             try
             {
-                CaretMarginFactory = caretMarginFactory as CaretMarginFactory;
+                RightMarginFactory = rightMarginFactory as RightMarginFactory;
                 if (document == null)
                     return;
 
@@ -222,8 +222,12 @@ namespace SimilarHighlight
                     CurrentSelectNum = 0;
                     var tempEvent = TagsChanged;
                     if (tempEvent != null)
+                    {
                         // Refresh the text of the current editor window.
                         tempEvent(this, new SnapshotSpanEventArgs(new SnapshotSpan(SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
+                        NewSpanAll.Clear();
+                        RightMarginFactory.rightMargin.rightMarginElement.SetCurrentPoint(this.View.TextSnapshot.GetLineFromLineNumber(0).Start);
+                    }
                 }
             }
             else if (IsShiftDown && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
@@ -252,6 +256,7 @@ namespace SimilarHighlight
 
             if (RequestSelection.Text.Trim() != "")
             {
+                RightMarginFactory.rightMargin.rightMarginElement.SetCurrentPoint(ConvertToPosition(RequestSelection.TopPoint));
                 // Highlight by background thread.
                 ThreadStartHighlighting();
                 
@@ -467,10 +472,7 @@ namespace SimilarHighlight
                     // TODO temp  added
                     TMPCurrentSelectNum = CurrentSelectNum;
                 }
-                Application.Current.Dispatcher.Invoke((Action)(() =>
-                {
-                    CaretMarginFactory.caretMargin.caretMarginElement.InvalidateVisual();
-                }));
+                this.RedrawMargin();
                
                 // If another change hasn't happened, do a real update
                 if (currentSelection == RequestSelection)
@@ -480,6 +482,14 @@ namespace SimilarHighlight
             {
                 Debug.Write(exc.ToString());
             }
+        }
+
+        private void RedrawMargin()
+        {
+            Application.Current.Dispatcher.Invoke((Action)(() =>
+            {
+                RightMarginFactory.rightMargin.rightMarginElement.RedrawRightMargin();
+            }));
         }
 
         // When the selected element does not contain the double quotation marks, 
@@ -734,6 +744,8 @@ namespace SimilarHighlight
                     // Make the similar element highlighted.
                     selected.MoveToAbsoluteOffset(newStartOffset, false);
                     selected.MoveToAbsoluteOffset(newStartOffset + newSpan.Length, true);
+                    // Set the new element.
+                    RightMarginFactory.rightMargin.rightMarginElement.SetCurrentPoint(newSpan.Start);
                 }
             }
             catch (Exception exc)

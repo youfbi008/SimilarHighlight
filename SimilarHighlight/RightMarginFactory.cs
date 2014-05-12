@@ -1,32 +1,26 @@
-// Copyright (c) Microsoft Corporation
-// All rights reserved
+using System.ComponentModel.Composition;
+using Microsoft.VisualStudio.Text.Editor;
+using Microsoft.VisualStudio.Utilities;
+using SimilarHighlight.OverviewMargin;
+using SimilarHighlight.SettingsStore;
 
 namespace SimilarHighlight
 {
-    using System.ComponentModel.Composition;
-    using Microsoft.VisualStudio.Text.Editor;
-    using Microsoft.VisualStudio.Utilities;
-    using SimilarHighlight.OverviewMargin;
-    using SimilarHighlight.SettingsStore;
-
     [Export(typeof(IWpfTextViewMarginProvider))]
     
-    [Name(CaretMargin.Name)]
+    [Name(RightMargin.Name)]
     [MarginContainer(PredefinedOverviewMarginNames.Overview)]
-//    [Order(After = PredefinedOverviewMarginNames.OverviewMark, Before = "Structure")]
     [ContentType("text")]
     [TextViewRole(PredefinedTextViewRoles.Interactive)]
-    sealed class CaretMarginFactory : IWpfTextViewMarginProvider
+    sealed class RightMarginFactory : IWpfTextViewMarginProvider
     {
-#pragma warning disable 649
         [Import(AllowDefault = true)]
         internal ISettingsStore _settingsStore { get; set; }
-#pragma warning restore 649
 
-        [Export]
-        [Name("CaretAdornmentLayer")]
-        [Order(After = PredefinedAdornmentLayers.Outlining, Before = PredefinedAdornmentLayers.Selection)]
-        internal AdornmentLayerDefinition caretLayerDefinition;
+        //[Export]
+        //[Name("CaretAdornmentLayer")]
+        //[Order(After = PredefinedAdornmentLayers.Outlining, Before = PredefinedAdornmentLayers.Selection)]
+        //internal AdornmentLayerDefinition caretLayerDefinition;
 
         public bool LoadOption(IEditorOptions options, string optionName)
         {
@@ -36,7 +30,8 @@ namespace SimilarHighlight
             }
             return false;
         }
-        public CaretMargin caretMargin;
+        public RightMargin rightMargin;
+
         /// <summary>
         /// Create an instance of the CaretMargin in the specified <see cref="IWpfTextViewHost"/>.
         /// </summary>
@@ -51,8 +46,8 @@ namespace SimilarHighlight
                 //(since the definition of a word can change based on context).
 
                 //Create the caret margin, passing it a newly instantiated text structure navigator for the view.
-                this.caretMargin = new CaretMargin(textViewHost, containerMarginAsOverviewMargin.ScrollBar, this);
-                return this.caretMargin;
+                this.rightMargin = new RightMargin(textViewHost, containerMarginAsOverviewMargin.ScrollBar, this);
+                return this.rightMargin;
             }
             else
                 return null;

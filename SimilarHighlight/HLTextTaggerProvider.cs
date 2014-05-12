@@ -36,10 +36,9 @@ namespace SimilarHighlight
         [ImportMany]
         internal List<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> marginProviders;
 
-        private IWpfTextViewMarginProvider caretMarginFactory { get; set; }
+        private IWpfTextViewMarginProvider rightMarginFactory { get; set; }
         private IOutputWindowPane outputWindow { get; set; }
         
-
         public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
         {
             //provide highlighting only on the top buffer
@@ -69,13 +68,13 @@ namespace SimilarHighlight
             }
 
             // A margin factory to add a right marigin which mark highlighted elements' points.
-            if (caretMarginFactory == null)
+            if (rightMarginFactory == null)
             {
                 foreach (var marginProvider in marginProviders)
                 {
-                    if (String.Compare(marginProvider.Metadata.Name, "Caret", StringComparison.OrdinalIgnoreCase) == 0)
+                    if (String.Compare(marginProvider.Metadata.Name, "RightMargin", StringComparison.OrdinalIgnoreCase) == 0)
                     {
-                        caretMarginFactory = marginProvider.Value;
+                        rightMarginFactory = marginProvider.Value;
                     }
                 }
             }
@@ -86,7 +85,7 @@ namespace SimilarHighlight
                 outputWindow = OutputWindowService.TryGetPane("Similar");
             }
 
-            return new HLTextTagger(textView as IWpfTextView, buffer, nowDocument, outputWindow, caretMarginFactory) as ITagger<T>;
+            return new HLTextTagger(textView as IWpfTextView, buffer, nowDocument, outputWindow, rightMarginFactory) as ITagger<T>;
         }
     }
 }

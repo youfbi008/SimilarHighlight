@@ -1,10 +1,8 @@
-// Copyright (c) Microsoft Corporation
-// All rights reserved
+using System.ComponentModel.Composition;
+using Microsoft.VisualStudio.Text.Editor;
 
 namespace SimilarHighlight.SettingsStore
 {
-    using System.ComponentModel.Composition;
-    using Microsoft.VisualStudio.Text.Editor;
     /// <summary>
     /// Provides an <see cref="ISettingsStore"/>, which can be used to persist options between sessions.
     /// </summary>

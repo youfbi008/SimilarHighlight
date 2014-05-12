@@ -1,17 +1,14 @@
-﻿// Copyright (c) Microsoft Corporation
-// All rights reserved
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.Composition;
+using Microsoft.VisualStudio.Text.Editor;
+using Microsoft.VisualStudio.Text.Outlining;
+using Microsoft.VisualStudio.Text.Projection;
+using Microsoft.VisualStudio.Utilities;
+using SimilarHighlight.SettingsStore;
 
 namespace SimilarHighlight.OverviewMargin.Implementation
 {
-    using System;
-    using System.Collections.Generic;
-    using System.ComponentModel.Composition;
-    using Microsoft.VisualStudio.Text.Editor;
-    using Microsoft.VisualStudio.Text.Outlining;
-    using Microsoft.VisualStudio.Text.Projection;
-    using Microsoft.VisualStudio.Utilities;
-    using SettingsStore;
-
     [Export(typeof(IWpfTextViewMarginProvider))]
     [Name(PredefinedOverviewMarginNames.Overview)]
     [MarginContainer(PredefinedMarginNames.VerticalScrollBarContainer)]

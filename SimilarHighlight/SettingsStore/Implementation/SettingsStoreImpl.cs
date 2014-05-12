@@ -1,16 +1,13 @@
-// Copyright (c) Microsoft Corporation
-// All rights reserved
+using System;
+using System.ComponentModel.Composition;
+using System.Runtime.InteropServices;
+using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio.Text.Editor;
+using System.Windows.Media;
+using System.Globalization;
 
 namespace SimilarHighlight.SettingsStore.Implementation
 {
-    using System;
-    using System.ComponentModel.Composition;
-    using System.Runtime.InteropServices;
-    using Microsoft.VisualStudio.Shell.Interop;
-    using Microsoft.VisualStudio.Text.Editor;
-    using System.Windows.Media;
-    using System.Globalization;
-
     /// <summary>
     /// Provides an implementation of an ISettingsStore that saves options in the registry.
     /// </summary>

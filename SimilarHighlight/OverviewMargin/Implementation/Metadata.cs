@@ -1,13 +1,10 @@
-﻿// Copyright (c) Microsoft Corporation
-// All rights reserved
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Windows;
+using Microsoft.VisualStudio.Utilities;
 
 namespace SimilarHighlight.OverviewMargin.Implementation
 {
-    using System.Collections.Generic;
-    using System.ComponentModel;
-    using System.Windows;
-    using Microsoft.VisualStudio.Utilities;
-
     public interface IContentTypeMetadata
     {
         IEnumerable<string> ContentTypes { get; }

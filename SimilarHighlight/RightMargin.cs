@@ -1,43 +1,40 @@
-// Copyright (c) Microsoft Corporation
-// All rights reserved
+using System;
+using System.ComponentModel.Composition;
+using System.Windows;
+using Microsoft.VisualStudio.Text.Editor;
 
 namespace SimilarHighlight
 {
-    using System;
-    using System.ComponentModel.Composition;
-    using System.Windows;
-    using Microsoft.VisualStudio.Text.Editor;
-
     /// <summary>
     /// Implementation of an IWpfTextViewMargin that highlights the location of the caret
     /// and all instances of words that match the word under the caret.
     /// </summary>
     [Export(typeof(IWpfTextViewMargin))]
-    internal class CaretMargin : IWpfTextViewMargin
+    internal class RightMargin : IWpfTextViewMargin
     {
         /// <summary>
         /// Name of this margin.
         /// </summary>
-        public const string Name = "Caret";
+        public const string Name = "RightMargin";
 
         #region Private Members
-        public CaretMarginElement caretMarginElement;
+        public RightMarginElement rightMarginElement;
         bool _isDisposed = false;
         #endregion
 
         /// <summary>
-        /// Constructor for the CaretMargin.
+        /// Constructor for the RightMargin.
         /// </summary>
         /// <param name="textViewHost">The IWpfTextViewHost in which this margin will be displayed.</param>
         /// <param name="navigator">Instance of an ITextStructureNavigator used to define words in the host's TextView. Created from the
         /// ITextStructureNavigatorFactory service.</param>
-        public CaretMargin(IWpfTextViewHost textViewHost, IVerticalScrollBar scrollBar, CaretMarginFactory factory)
+        public RightMargin(IWpfTextViewHost textViewHost, IVerticalScrollBar scrollBar, RightMarginFactory factory)
         {
             // Validate
             if (textViewHost == null)
                 throw new ArgumentNullException("textViewHost");
 
-            this.caretMarginElement = new CaretMarginElement(textViewHost.TextView, factory, scrollBar);
+            this.rightMarginElement = new RightMarginElement(textViewHost.TextView, factory, scrollBar);
         }
 
         #region IWpfTextViewMargin Members
@@ -49,7 +46,7 @@ namespace SimilarHighlight
             get
             {
                 ThrowIfDisposed();
-                return this.caretMarginElement;
+                return this.rightMarginElement;
             }
         }
         #endregion
@@ -63,7 +60,7 @@ namespace SimilarHighlight
             get
             {
                 ThrowIfDisposed();
-                return this.caretMarginElement.ActualWidth;
+                return this.rightMarginElement.ActualWidth;
             }
         }
 
@@ -75,13 +72,13 @@ namespace SimilarHighlight
             get
             {
                 ThrowIfDisposed();
-                return this.caretMarginElement.Enabled;
+                return this.rightMarginElement.Enabled;
             }
         }
 
         public ITextViewMargin GetTextViewMargin(string marginName)
         {
-            return string.Compare(marginName, CaretMargin.Name, StringComparison.OrdinalIgnoreCase) == 0 ? this : (ITextViewMargin)null;
+            return string.Compare(marginName, RightMargin.Name, StringComparison.OrdinalIgnoreCase) == 0 ? this : (ITextViewMargin)null;
         }
 
         /// <summary>
@@ -91,7 +88,7 @@ namespace SimilarHighlight
         {
             if (!_isDisposed)
             {
-                this.caretMarginElement.Dispose();
+                this.rightMarginElement.Dispose();
                 GC.SuppressFinalize(this);
                 _isDisposed = true;
             }

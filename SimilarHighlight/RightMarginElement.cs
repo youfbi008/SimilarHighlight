@@ -1,40 +1,37 @@
-﻿// Copyright (c) Microsoft Corporation
-// All rights reserved
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.Composition;
+using System.Threading;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Threading;
+using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Text.Editor;
+using Microsoft.VisualStudio.Text.Formatting;
+using SimilarHighlight.OverviewMargin;
+using System.Diagnostics;
 
 namespace SimilarHighlight
 {
-    using System;
-    using System.Collections.Generic;
-    using System.ComponentModel.Composition;
-    using System.Threading;
-    using System.Windows;
-    using System.Windows.Media;
-    using System.Windows.Threading;
-    using Microsoft.VisualStudio.Text;
-    using Microsoft.VisualStudio.Text.Editor;
-    using Microsoft.VisualStudio.Text.Formatting;
-    using SimilarHighlight.OverviewMargin;
-    using System.Diagnostics;
-
     [Export(typeof(EditorOptionDefinition))]
-    internal sealed class CaretMarginEnabled : EditorOptionDefinition<bool>
+    internal sealed class Enabled : EditorOptionDefinition<bool>
     {
         public override bool Default { get { return true; } }
-        public override EditorOptionKey<bool> Key { get { return CaretMarginElement.EnabledOptionId; } }
+        public override EditorOptionKey<bool> Key { get { return RightMarginElement.EnabledOptionId; } }
     }
 
     [Export(typeof(EditorOptionDefinition))]
     internal sealed class CaretColor : EditorOptionDefinition<Color>
     {
-        public override Color Default { get { return Colors.MediumBlue; } }
-        public override EditorOptionKey<Color> Key { get { return CaretMarginElement.CaretColorId; } }
+        public override Color Default { get { return Colors.Black; } }//Colors.MediumBlue
+        public override EditorOptionKey<Color> Key { get { return RightMarginElement.CaretColorId; } }
     }
 
     [Export(typeof(EditorOptionDefinition))]
     internal sealed class MatchColor : EditorOptionDefinition<Color>
     {
         public override Color Default { get { return Colors.MediumPurple; } }
-        public override EditorOptionKey<Color> Key { get { return CaretMarginElement.MatchColorId; } }
+        public override EditorOptionKey<Color> Key { get { return RightMarginElement.MatchColorId; } }
     }
 
     [Export(typeof(EditorOptionDefinition))]
@@ -42,31 +39,31 @@ namespace SimilarHighlight
     {
         //Off by default
         public override Color Default { get { return Color.FromArgb(0x40, 0x93, 0x70, 0xDB); } }
-        public override EditorOptionKey<Color> Key { get { return CaretMarginElement.AdornmentMatchColorId; } }
+        public override EditorOptionKey<Color> Key { get { return RightMarginElement.AdornmentMatchColorId; } }
     }
 
     [Export(typeof(EditorOptionDefinition))]
     internal sealed class MarginWidth : EditorOptionDefinition<double>
     {
-        public override double Default { get { return 6.0; } }
+        public override double Default { get { return 10.0; } }
         public override bool IsValid(ref double proposedValue)
         {
             return (proposedValue >= 3.0) && (proposedValue <= 60.0);
         }
-        public override EditorOptionKey<double> Key { get { return CaretMarginElement.MarginWidthId; } }
+        public override EditorOptionKey<double> Key { get { return RightMarginElement.MarginWidthId; } }
     }
 
     [Export(typeof(FrameworkElement))]
     /// <summary>
     /// Helper class to handle the rendering of the caret margin.
     /// </summary>
-    class CaretMarginElement : FrameworkElement
+    class RightMarginElement : FrameworkElement
     {
         private IList<SnapshotSpan> SpanAll { get; set; }
         public static int OldHighlightNo { get { return oldHighlightNo; } set { oldHighlightNo = value; } }
         private static int oldHighlightNo { get; set; }
         private readonly IWpfTextView textView;
-        private readonly IAdornmentLayer layer;
+   //     private readonly IAdornmentLayer layer;
         private readonly IVerticalScrollBar scrollBar;
 
         private BackgroundSearch search = null;
@@ -75,19 +72,19 @@ namespace SimilarHighlight
 
         private Brush caretBrush;
         private Brush matchBrush;
-        private Brush adornmentMatchBrush;
+        private SnapshotPoint currentPoint;
 
         private bool hasEvents = false;
 
-        const double MarkPadding = -4.5;
+        const double MarkPadding = 0.5;
         const double MarkThickness = 4.0;
 
-        public static readonly EditorOptionKey<bool> EnabledOptionId = new EditorOptionKey<bool>("CaretMargin/Enabled");
-        public static readonly EditorOptionKey<Color> CaretColorId = new EditorOptionKey<Color>("CaretMargin/CaretColor");
-        public static readonly EditorOptionKey<Color> MatchColorId = new EditorOptionKey<Color>("CaretMargin/MatchColor");
-        public static readonly EditorOptionKey<Color> AdornmentMatchColorId = new EditorOptionKey<Color>("CaretMargin/AdornmentMatchColor");
-        public static readonly EditorOptionKey<double> MarginWidthId = new EditorOptionKey<double>("CaretMargin/MarginWidth");
-        public static readonly string CaretMarginRoot = "CaretMargin/CaretMarginRoot";
+        public static readonly EditorOptionKey<bool> EnabledOptionId = new EditorOptionKey<bool>("RightMargin/Enabled");
+        public static readonly EditorOptionKey<Color> CaretColorId = new EditorOptionKey<Color>("RightMargin/CaretColor");
+        public static readonly EditorOptionKey<Color> MatchColorId = new EditorOptionKey<Color>("RightMargin/MatchColor");
+        public static readonly EditorOptionKey<Color> AdornmentMatchColorId = new EditorOptionKey<Color>("RightMargin/AdornmentMatchColor");
+        public static readonly EditorOptionKey<double> MarginWidthId = new EditorOptionKey<double>("RightMargin/MarginWidth");
+        public static readonly string CaretMarginRoot = "RightMargin/CaretMarginRoot";
 
         /// <summary>
         /// Constructor for the CaretMarginElement.
@@ -96,26 +93,25 @@ namespace SimilarHighlight
         /// <param name="factory">Instance of the CaretMarginFactory that is creating the margin.</param>
         /// <param name="verticalScrollbar">Vertical scrollbar of the ITextViewHost that contains <paramref name="textView"/>.</param>
         [ImportingConstructor]
-        public CaretMarginElement(IWpfTextView textView, CaretMarginFactory factory, IVerticalScrollBar verticalScrollbar)
+        public RightMarginElement(IWpfTextView textView, RightMarginFactory factory, IVerticalScrollBar verticalScrollbar)
         {
             this.textView = textView;
-            this.layer = textView.GetAdornmentLayer("CaretAdornmentLayer");
+      //      this.layer = textView.GetAdornmentLayer("CaretAdornmentLayer");
             oldHighlightNo = 0;
-            factory.LoadOption(textView.Options, CaretMarginElement.EnabledOptionId.Name);
-            factory.LoadOption(textView.Options, CaretMarginElement.CaretColorId.Name);
-            factory.LoadOption(textView.Options, CaretMarginElement.MatchColorId.Name);
-            factory.LoadOption(textView.Options, CaretMarginElement.AdornmentMatchColorId.Name);
-            factory.LoadOption(textView.Options, CaretMarginElement.MarginWidthId.Name);
+            factory.LoadOption(textView.Options, RightMarginElement.EnabledOptionId.Name);
+            factory.LoadOption(textView.Options, RightMarginElement.CaretColorId.Name);
+            factory.LoadOption(textView.Options, RightMarginElement.MatchColorId.Name);
+            factory.LoadOption(textView.Options, RightMarginElement.AdornmentMatchColorId.Name);
+            factory.LoadOption(textView.Options, RightMarginElement.MarginWidthId.Name);
 
             this.scrollBar = verticalScrollbar;
 
             //Make our width big enough to see, but not so big that it consumes a lot of
             //real-estate.
-            this.Width = textView.Options.GetOptionValue(CaretMarginElement.MarginWidthId);
+            this.Width = textView.Options.GetOptionValue(RightMarginElement.MarginWidthId);
 
-            this.caretBrush = GetBrush(CaretMarginElement.CaretColorId);
-            this.matchBrush = GetBrush(CaretMarginElement.MatchColorId);
-            this.adornmentMatchBrush = GetBrush(CaretMarginElement.AdornmentMatchColorId);
+            this.caretBrush = GetBrush(RightMarginElement.CaretColorId);
+            this.matchBrush = GetBrush(RightMarginElement.MatchColorId);
 
             this.textView.Closed += OnClosed;
 
@@ -125,7 +121,6 @@ namespace SimilarHighlight
 
             this.UpdateEventHandlers(null);
 
-      
             this.IsVisibleChanged += delegate(object sender, DependencyPropertyChangedEventArgs e)
             {
                 this.hasEvents = false;
@@ -140,13 +135,19 @@ namespace SimilarHighlight
             if (this.textView.Selection.Start != this.textView.Selection.End && HLTextTagger.IsChecked)
             {
                 
-                this.UpdateMarginMatches(false);
+          //      this.UpdateMarginMatches(false);
             }
+        }
+
+        public void SetCurrentPoint(SnapshotPoint currentPoint)
+        {
+            this.currentPoint = currentPoint;
+            this.InvalidateVisual();
         }
 
         private void UpdateEventHandlers(bool? forceEvents)
         {
-            bool needEvents = forceEvents.HasValue ? forceEvents.Value : (this.IsVisible || (this.adornmentMatchBrush != null));
+            bool needEvents = forceEvents.HasValue ? forceEvents.Value : (this.IsVisible); //|| (this.adornmentMatchBrush != null)
 
             if (needEvents != this.hasEvents)
             {
@@ -155,8 +156,6 @@ namespace SimilarHighlight
                 if (needEvents)
                 {
                     
-
-              //      this.textView.LayoutChanged += OnLayoutChanged;
               //      this.textView.Caret.PositionChanged += OnPositionChanged;
            //         this.scrollBar.TrackSpanChanged += OnTrackSpanChanged;
 
@@ -165,7 +164,6 @@ namespace SimilarHighlight
                 }
                 else
                 {
-          //          this.textView.LayoutChanged -= OnLayoutChanged;
               //      this.textView.Caret.PositionChanged -= OnPositionChanged;
               //      this.scrollBar.TrackSpanChanged -= OnTrackSpanChanged;
 
@@ -203,28 +201,13 @@ namespace SimilarHighlight
         {
             get
             {
-                return this.textView.Options.GetOptionValue<bool>(CaretMarginElement.EnabledOptionId);
+                return this.textView.Options.GetOptionValue<bool>(RightMarginElement.EnabledOptionId);
             }
         }
 
         private void OnOptionsChanged(object sender, EventArgs e)
         {
             this.Visibility = this.Enabled ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        /// <summary>
-        /// Handler for layout changed events.
-        /// </summary>
-        private void OnLayoutChanged(object sender, TextViewLayoutChangedEventArgs e)
-        {
-            if (AnyTextChanges(e.OldViewState.EditSnapshot.Version, e.NewViewState.EditSnapshot.Version))
-            {
-                this.UpdateMarginMatches(true);
-            }
-            else
-            {
-                this.RedrawAdornments(e.NewOrReformattedLines);
-            }
         }
 
         /// <summary>
@@ -254,107 +237,8 @@ namespace SimilarHighlight
             this.textView.Closed -= OnClosed;
         }
 
-        private static bool AnyTextChanges(ITextVersion oldVersion, ITextVersion currentVersion)
-        {
-            while (oldVersion != currentVersion)
-            {
-                if (oldVersion.Changes.Count > 0)
-                    return true;
-                oldVersion = oldVersion.Next;
-            }
-
-            return false;
-        }
-
-        private void RedrawAdornments(IList<ITextViewLine> newOrReformattedLines)
-        {
-            if (this.adornmentMatchBrush != null)
-            {
-                if (newOrReformattedLines == null)
-                {
-                    //The highlight changed: remove all adornments and recreate the adornments on the entire view.
-                    this.layer.RemoveAllAdornments();
-                    newOrReformattedLines = this.textView.TextViewLines;
-                }
-
-                if (this.search != null) //(this.highlight != null) && (
-                {
-                    //Take a snapshot of the matches found to date (this could still be changing
-                    //if the search has not completed yet).
-                    //if (this.search.Matches.Count != HLTextTagger.NewSpanAll.Count && this.search.Matches[0].Start != HLTextTagger.NewSpanAll[0].Start) {
-                    //    int aa = 0;
-                    //}
-                    IList<SnapshotSpan> matches = this.search.Matches;
-                    if ((matches.Count > 0) && (matches[0].Snapshot == this.textView.TextSnapshot))
-                    {
-                        //matches is sorted, as is newOrReformattedLines (as are the spans in visibleText) so keep track of the last match found since it
-                        //is a good starting point for the next match.
-                        int firstLegalMatch = 0;
-
-                        int caretPosition = this.textView.Caret.Position.BufferPosition;
-
-                        foreach (var line in newOrReformattedLines)
-                        {
-                            //Find all matches on the visible text in line.
-                            NormalizedSnapshotSpanCollection visibleText = line.ExtentAsMappingSpan.GetSpans(this.textView.TextSnapshot);
-
-                            foreach (var span in visibleText)
-                            {
-                                while (true)
-                                {
-                                    if (matches.Count != HLTextTagger.NewSpanAll.Count)
-                                    {
-                                        firstLegalMatch = 11;
-                                    }
-                                    firstLegalMatch = FindMatchIndex(matches, span.Start, firstLegalMatch);
-                                    if (firstLegalMatch >= matches.Count)
-                                    {
-                                        //No more matches, we might as well stop.
-                                        return;
-                                    }
-
-                                    SnapshotSpan matchingSpan = matches[firstLegalMatch];
-
-                                    if (matchingSpan.End <= span.End)
-                                    {
-                                        ++firstLegalMatch;  //Make sure we don't redraw this adornment.
-
-                                        //Don't draw the adornment for the word the caret is adjacent to.
-                                        if ((caretPosition < matchingSpan.Start) || (caretPosition > matchingSpan.End))
-                                        {
-                                            Geometry g = this.textView.TextViewLines.GetMarkerGeometry(matchingSpan);
-                                            if (g != null)
-                                            {
-                                                this.layer.AddAdornment(matchingSpan, null, new GeometryAdornment(this.adornmentMatchBrush, g));
-                                            }
-                                        }
-                                    }
-                                    else
-                                        break;  //No matches in this span.
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        private static int FindMatchIndex(IList<SnapshotSpan> matches, int start, int firstLegalMatch)
-        {
-            //Search for a match >= start whose index >= firstLegalMatch.
-            int low = firstLegalMatch;
-            int high = matches.Count;
-
-            while (low < high)
-            {
-                int middle = (low + high) / 2;
-                if (matches[middle].Start < start)
-                    low = middle + 1;
-                else
-                    high = middle;
-            }
-
-            return low;
+        public void RedrawRightMargin() {
+            this.InvalidateVisual();
         }
 
         /// <summary>
@@ -362,7 +246,7 @@ namespace SimilarHighlight
         /// </summary>
         public void UpdateMarginMatches(bool force)
         {
-            if (((this.matchBrush != null) && this.IsVisible) || (this.adornmentMatchBrush != null))
+            if (((this.matchBrush != null) && this.IsVisible)) // || (this.adornmentMatchBrush != null)
             {
              //   SpanAll = HLTextTagger.NewSpanAll;
                 //SnapshotSpan? oldHighlightSpan = this.highlightSpan;
@@ -383,30 +267,37 @@ namespace SimilarHighlight
 
                     if (HLTextTagger.NewSpanAll.Count > 0 || oldHighlightNo == 0)//this.highlight != null && 
                     {
+                        if (RightMarginElement.OldHighlightNo != HLTextTagger.HighlightNo)
+                        {
+                            RightMarginElement.OldHighlightNo = HLTextTagger.HighlightNo;
+                            this.SpanAll = HLTextTagger.NewSpanAll;
+                            //break;
+                        }
+
                      //   oldHighlightNo = HLTextTagger.HighlightNo;
 
                         //The underlying buffer could be very large, meaning that doing the search for all matches on the UI thread
                         //is a bad idea. Do the search on the background thread and use a callback to invalidate the visual when
                         //the entire search has completed.
-                        this.search = new BackgroundSearch(this.textView.TextSnapshot, this.highlight,
-                                                            delegate
-                                                            {
-                                                                //Force the invalidate to happen on the UI thread to satisfy WPF
-                                                                this.Dispatcher.Invoke(DispatcherPriority.Normal,
-                                                                                        new DispatcherOperationCallback(delegate
-                                                                                        {
-                                                                                            this.InvalidateVisual();
-                                                                                            this.RedrawAdornments(null);
-                                                                                            return null;
-                                                                                        }),
-                                                                                        null);
-                                                            });
+                        //this.search = new BackgroundSearch(this.textView.TextSnapshot, this.highlight,
+                        //                                    delegate
+                        //                                    {
+                        //                                        //Force the invalidate to happen on the UI thread to satisfy WPF
+                        //                                        this.Dispatcher.Invoke(DispatcherPriority.Normal,
+                        //                                                                new DispatcherOperationCallback(delegate
+                        //                                                                {
+                        //                                                                    this.InvalidateVisual();
+                        //                                                               //     this.RedrawAdornments(null);
+                        //                                                                    return null;
+                        //                                                                }),
+                        //                                                                null);
+                        //                                    });
                //         this.search.Matches = new List<SnapshotSpan>(HLTextTagger.NewSpanAll);
                     }
                     else
                     {
                         //no highlight == no adornments or marks.
-                        this.layer.RemoveAllAdornments();
+                 //       this.layer.RemoveAllAdornments();
                         this.InvalidateVisual();
                     }
                 //}
@@ -443,9 +334,6 @@ namespace SimilarHighlight
             //}
         }
 
-        public static void redraw() { 
-            
-        }
         /// <summary>
         /// Override for the FrameworkElement's OnRender. When called, redraw
         /// all of the markers 
@@ -454,7 +342,7 @@ namespace SimilarHighlight
         {
             base.OnRender(drawingContext);
 
-            if (this.search != null)
+            if (HLTextTagger.NewSpanAll != null)
             {
                 //There is a word that should be highlighted. It doesn't matter whether or not the search has completed or
                 //is still in progress: draw red marks for each match found so far (the completion callback on the search
@@ -491,10 +379,10 @@ namespace SimilarHighlight
                 }
             }
 
-            if (this.caretBrush != null)
+            if (this.caretBrush != null && this.currentPoint.Position != 0)
             {
                 //Draw a blue mark at the caret's location (on top of the mark at the caret's location).
-                this.DrawMark(drawingContext, this.caretBrush, this.scrollBar.GetYCoordinateOfBufferPosition(this.textView.Caret.Position.BufferPosition));
+                this.DrawMark(drawingContext, this.caretBrush, this.scrollBar.GetYCoordinateOfBufferPosition(currentPoint));
             }
         }
 
@@ -588,9 +476,9 @@ namespace SimilarHighlight
                     //{
     
                     //    System.Threading.Thread.Sleep(200);
-                        if (CaretMarginElement.OldHighlightNo != HLTextTagger.HighlightNo)
+                        if (RightMarginElement.OldHighlightNo != HLTextTagger.HighlightNo)
                         {
-                            CaretMarginElement.OldHighlightNo = HLTextTagger.HighlightNo;
+                            RightMarginElement.OldHighlightNo = HLTextTagger.HighlightNo;
                             matches = HLTextTagger.NewSpanAll;
                             //break;
                         }
@@ -691,36 +579,6 @@ namespace SimilarHighlight
                     }
                 }
             }
-        }
-
-        public class GeometryAdornment : UIElement
-        {
-            private readonly DrawingVisual _child;
-
-            public GeometryAdornment(Brush fillBrush, Geometry geometry)
-            {
-                _child = new DrawingVisual();
-                DrawingContext context = _child.RenderOpen();
-                context.DrawGeometry(fillBrush, null, geometry);
-                context.Close();
-
-                this.AddVisualChild(_child);
-            }
-
-            #region Member Overrides
-            protected override Visual GetVisualChild(int index)
-            {
-                return _child;
-            }
-
-            protected override int VisualChildrenCount
-            {
-                get
-                {
-                    return 1;
-                }
-            }
-            #endregion //Member Overrides
         }
     }
 }

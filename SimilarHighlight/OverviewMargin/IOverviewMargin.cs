@@ -1,10 +1,7 @@
-﻿// Copyright (c) Microsoft Corporation
-// All rights reserved
+﻿using Microsoft.VisualStudio.Text.Editor;
 
 namespace SimilarHighlight.OverviewMargin
 {
-    using Microsoft.VisualStudio.Text.Editor;
-
     /// <summary>
     /// Represents an overview margin.
     /// </summary>

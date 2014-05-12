@@ -16,10 +16,10 @@ namespace SimilarHighlight.Tests
 		[Test]
         [TestCase(@"../../../SimilarHighlight.Tests/InferenceTest.cs")]
 		public void TestGetSimilarElements(string path) {
-			var processor = ProcessorLoader.CSharpUsingAntlr3;	// processorIdentifier indicates here
+			var processor = new Code2Xml.Languages.ANTLRv3.Generators.CSharp.CSharpCstGeneratorUsingAntlr3();	// processorIdentifier indicates here
 			var fileInfo = new FileInfo(path);					// fileInfoIdentifier indicates here
 			var code = File.ReadAllText(path);
-			var xml = processor.GenerateXml(fileInfo);
+            var xml = processor.GenerateXmlFromCodeText(code, true);
 			var elements = xml.Descendants("identifier").ToList();
 
 			// Create locatoin information that user selects in the editor
