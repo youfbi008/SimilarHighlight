@@ -17,11 +17,6 @@ namespace SimilarHighlight
         [Import(AllowDefault = true)]
         internal ISettingsStore _settingsStore { get; set; }
 
-        //[Export]
-        //[Name("CaretAdornmentLayer")]
-        //[Order(After = PredefinedAdornmentLayers.Outlining, Before = PredefinedAdornmentLayers.Selection)]
-        //internal AdornmentLayerDefinition caretLayerDefinition;
-
         public bool LoadOption(IEditorOptions options, string optionName)
         {
             if (_settingsStore != null)

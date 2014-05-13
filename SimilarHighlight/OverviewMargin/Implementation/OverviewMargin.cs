@@ -16,14 +16,6 @@ using Microsoft.VisualStudio.Utilities;
 namespace SimilarHighlight.OverviewMargin.Implementation
 {
     [Export(typeof(EditorOptionDefinition))]
-    public sealed class ElisionColor : ViewOptionDefinition<Color>
-    {
-        public override Color Default { get { return Color.FromArgb(0x40, 0xff, 0x4f, 0x4f); } }
-
-        public override EditorOptionKey<Color> Key { get { return OverviewMargin.ElisionColorId; } }
-    }
-
-    [Export(typeof(EditorOptionDefinition))]
     public sealed class OffScreenColor : ViewOptionDefinition<Color>
     {
         public override Color Default { get { return Color.FromArgb(0x30, 0x00, 0x00, 0x00); } }
@@ -62,7 +54,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
 
         private OverviewMarginProvider _provider;
 
-        public static readonly EditorOptionKey<Color> ElisionColorId = new EditorOptionKey<Color>("OverviewMarginImpl/ElisionColor");
         public static readonly EditorOptionKey<Color> OffScreenColorId = new EditorOptionKey<Color>("OverviewMarginImpl/OffScreenColor");
         public static readonly EditorOptionKey<Color> VisibleColorId = new EditorOptionKey<Color>("OverviewMarginImpl/VisibleColor");
 
@@ -75,9 +66,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         {
             _provider = myProvider;
 
-      //      _provider.LoadOption(base.TextViewHost.TextView.Options, DefaultOverviewMarginOptions.ExpandElisionsInOverviewMarginId.Name);
-
-            _provider.LoadOption(base.TextViewHost.TextView.Options, OverviewMargin.ElisionColorId.Name);
             _provider.LoadOption(base.TextViewHost.TextView.Options, OverviewMargin.OffScreenColorId.Name);
             _provider.LoadOption(base.TextViewHost.TextView.Options, OverviewMargin.VisibleColorId.Name);
 
@@ -85,7 +73,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
 
             _scrollBar = new SimpleScrollBar(textViewHost, containerMargin, myProvider._scrollMapFactory, this, false);
 
-            _elisionBrush = this.GetBrush(OverviewMargin.ElisionColorId);
             _offScreenBrush = this.GetBrush(OverviewMargin.OffScreenColorId);
             _visibleBrush = this.GetBrush(OverviewMargin.VisibleColorId);
 
@@ -227,10 +214,10 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             if (ActualWidth > 0.0)
             {
                 RenderViewportExtent(drawingContext);
-                if (!_scrollBar.UseElidedCoordinates)
-                {
-                    RenderElidedRegions(drawingContext);
-                }
+                //if (!_scrollBar.UseElidedCoordinates)
+                //{
+                //    RenderElidedRegions(drawingContext);
+                //}
             }
         }
         #endregion
@@ -286,32 +273,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         }
 
         #region Rendering
-        /// <summary>
-        /// Draw all the elided regions
-        /// </summary>
-        private void RenderElidedRegions(DrawingContext drawingContext)
-        {
-            if (_elisionBrush != null)
-            {
-                NormalizedSnapshotSpanCollection unelidedSourceSpans =
-                        base.TextViewHost.TextView.BufferGraph.MapDownToSnapshot(
-                            new SnapshotSpan(base.TextViewHost.TextView.VisualSnapshot, 0, base.TextViewHost.TextView.VisualSnapshot.Length),
-                            SpanTrackingMode.EdgeInclusive,
-                            base.TextViewHost.TextView.TextSnapshot);
-
-                double yBottom = _scrollBar.GetYCoordinateOfBufferPosition(new SnapshotPoint(base.TextViewHost.TextView.TextSnapshot, 0));
-                foreach (var span in unelidedSourceSpans)
-                {
-                    double yTop = _scrollBar.GetYCoordinateOfBufferPosition(span.Start);
-                    DrawRectangle(drawingContext, _elisionBrush, this.ActualWidth, yBottom, yTop);
-
-                    yBottom = _scrollBar.GetYCoordinateOfBufferPosition(span.End);
-                }
-
-                double y = _scrollBar.GetYCoordinateOfBufferPosition(new SnapshotPoint(base.TextViewHost.TextView.TextSnapshot, base.TextViewHost.TextView.TextSnapshot.Length)) - _scrollBar.ThumbHeight;
-                DrawRectangle(drawingContext, _elisionBrush, this.ActualWidth, yBottom, y);
-            }
-        }
 
         /// <summary>
         /// Shade the visible/offScreen portion of the buffer
@@ -323,7 +284,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
 
             double viewportTop = Math.Floor(_scrollBar.GetYCoordinateOfBufferPosition(start));
             double viewportBottom = Math.Ceiling(Math.Max(GetYCoordinateOfLineBottom(tvl.LastVisibleLine), viewportTop + MinViewportHeight));
-
+       
             DrawRectangle(drawingContext, _offScreenBrush, this.ActualWidth, _scrollBar.TrackSpanTop, viewportTop);
 
             DrawRectangle(drawingContext, _visibleBrush, this.ActualWidth, viewportTop, viewportBottom);

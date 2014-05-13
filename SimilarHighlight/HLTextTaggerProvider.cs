@@ -22,7 +22,7 @@ namespace SimilarHighlight
     [Export(typeof(IViewTaggerProvider))]
     [ContentType("text")]
     [TagType(typeof(TextMarkerTag))]
-    internal class HLTextTaggerProvider : IViewTaggerProvider
+    public class HLTextTaggerProvider : IViewTaggerProvider
     {
         [Import]
         internal ITextDocumentFactoryService TextDocumentFactoryService { get; set; }

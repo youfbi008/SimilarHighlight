@@ -88,7 +88,6 @@ namespace SimilarHighlight
         {
             if (!_isDisposed)
             {
-                this.rightMarginElement.Dispose();
                 GC.SuppressFinalize(this);
                 _isDisposed = true;
             }

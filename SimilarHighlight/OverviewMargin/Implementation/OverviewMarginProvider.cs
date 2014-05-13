@@ -6,6 +6,7 @@ using Microsoft.VisualStudio.Text.Outlining;
 using Microsoft.VisualStudio.Text.Projection;
 using Microsoft.VisualStudio.Utilities;
 using SimilarHighlight.SettingsStore;
+using Microsoft.VisualStudio.Text.Tagging;
 
 namespace SimilarHighlight.OverviewMargin.Implementation
 {
