@@ -25,6 +25,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         private readonly IList<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> _marginProviders;
 
         protected readonly IWpfTextViewHost TextViewHost;
+        protected IWpfTextViewMarginProvider rightMarginFactory { get; set; }
 
         protected ContainerMargin(string name, Orientation orientation, IWpfTextViewHost textViewHost,
                                   IList<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> marginProviders)
@@ -41,6 +42,11 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             {
                 if (String.Compare(marginProvider.Metadata.MarginContainer, _marginName, StringComparison.OrdinalIgnoreCase) == 0)
                 {
+                    if (String.Compare(marginProvider.Metadata.Name, "RightMargin", StringComparison.OrdinalIgnoreCase) == 0)
+                    {
+                        rightMarginFactory = marginProvider.Value;
+                    }
+                    
                     if (viewRoles.ContainsAny(marginProvider.Metadata.TextViewRoles))
                     {
                         _marginProviders.Add(marginProvider);

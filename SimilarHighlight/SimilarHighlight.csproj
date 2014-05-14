@@ -121,6 +121,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AstInferrer.cs" />
+    <Compile Include="OverviewMargin\Implementation\ContainerMargin.cs" />
+    <Compile Include="OverviewMargin\Implementation\OverviewMargin.cs" />
+    <Compile Include="OverviewMargin\Implementation\OverviewMarginProvider.cs" />
     <Compile Include="RightMargin.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -145,10 +148,7 @@
     <Compile Include="OutputWindow\ServiceProviderExtensions.cs" />
     <Compile Include="OutputWindow\Services.cs" />
     <Compile Include="OutputWindow\VsOutputWindowPaneAdapter.cs" />
-    <Compile Include="OverviewMargin\Implementation\ContainerMargin.cs" />
     <Compile Include="OverviewMargin\Implementation\Metadata.cs" />
-    <Compile Include="OverviewMargin\Implementation\OverviewMargin.cs" />
-    <Compile Include="OverviewMargin\Implementation\OverviewMarginProvider.cs" />
     <Compile Include="OverviewMargin\Implementation\Strings.Designer.cs" />
     <Compile Include="OverviewMargin\IOverviewMargin.cs" />
     <Compile Include="OverviewMargin\PredefinedOverviewMarginNames.cs" />

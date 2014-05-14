@@ -41,11 +41,11 @@ namespace SimilarHighlight
 
     internal class HLTextTagger : ITagger<HLTextTag>
     {
-        IWpfTextView View { get; set; }
+        static IWpfTextView View { get; set; }
         ITextBuffer SourceBuffer { get; set; }
         NormalizedSnapshotSpanCollection WordSpans { get; set; }
         SnapshotSpan? CurrentWord { get; set; }
-        EnvDTE.Document Document { get; set; }
+        
         private object updateLock = new object();
         private object buildLock = new object();
 
@@ -59,6 +59,7 @@ namespace SimilarHighlight
         public static IList<SnapshotSpan> NewSpanAll = new List<SnapshotSpan>();
         public static int HighlightNo = 0;
         public static bool IsChecked = false;
+        public static EnvDTE.Document Document { get; set; }
         // Count the number of left mouse button clicks.
         int CntLeftClick { get; set; }
         // current selection
@@ -66,9 +67,9 @@ namespace SimilarHighlight
         // current word for Repeat check   
         SnapshotSpan CurrentWordForCheck { get; set; }
         // the order number of current selection in highlighted elements
-        int CurrentSelectNum { get; set; }
+        private static int CurrentSelectNum { get; set; }
         // the temp order number of current selection in highlighted elements
-        int TMPCurrentSelectNum { get; set; }
+        private static int TMPCurrentSelectNum { get; set; }
         // the SyntaxTreeGenerator of the current editor
         SyntaxTreeGenerator SyntaxTreeGenerator;
         // the source code of the current editor
@@ -95,12 +96,12 @@ namespace SimilarHighlight
         // The strict similarity.
         public bool isStrict { get; set; }
         // The line break. Cobol only has /n.
-        public bool hasSR { get; set; }
+        public static bool hasSR { get; set; }
 		// CST : 0;  AST : 1;
         private int treeType = 0;
         private IOutputWindowPane OutputWindow;
 
-        RightMarginFactory RightMarginFactory;
+        static RightMarginFactory RightMarginFactory;
 
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, EnvDTE.Document document,
             IOutputWindowPane outputWindow, IWpfTextViewMarginProvider rightMarginFactory)
@@ -114,7 +115,7 @@ namespace SimilarHighlight
                 if (this.SyntaxTreeGenerator == null)
                 {
                     this.isStrict = true;
-                    this.hasSR = true;
+                    hasSR = true;
                     switch (Path.GetExtension(document.FullName).ToUpper())
                     {
                         case ".C":
@@ -152,8 +153,7 @@ namespace SimilarHighlight
                         SourceCode = currentTextDoc.StartPoint.CreateEditPoint().GetText(currentTextDoc.EndPoint);
                         // Check the line break type of the file.
                         CheckLineBreakType();
-                        this.Document = document;
-
+                        Document = document;
                         RootElement = SyntaxTreeGenerator.GenerateXmlFromCodeText(SourceCode, true);
                         RegexNeedFix = new Regex("^\"(.*)\"$");
                         // the forward offset when fixing
@@ -163,10 +163,10 @@ namespace SimilarHighlight
 
                         Locations = new List<LocationInfo>();
                         this.CntLeftClick = 0;
-                        this.View = view;
-                        this.View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;             
-                        this.View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
-                        this.View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
+                        View = view;
+                        View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;             
+                        View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
+                        View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
                         this.SourceBuffer = sourceBuffer;
                         this.WordSpans = new NormalizedSnapshotSpanCollection();
                         this.TmpWordSpans = new NormalizedSnapshotSpanCollection();
@@ -226,14 +226,14 @@ namespace SimilarHighlight
                         // Refresh the text of the current editor window.
                         tempEvent(this, new SnapshotSpanEventArgs(new SnapshotSpan(SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
                         NewSpanAll.Clear();
-                        RightMarginFactory.rightMargin.rightMarginElement.SetCurrentPoint(this.View.TextSnapshot.GetLineFromLineNumber(0).Start);
+                        RightMarginFactory.rightMargin.rightMarginElement.SetCurrentPoint(View.TextSnapshot.GetLineFromLineNumber(0).Start);
                     }
                 }
             }
             else if (IsShiftDown && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
             {
                 // When the select opeartion by keyboard is over.
-                RequestSelection = this.Document.Selection;
+                RequestSelection = Document.Selection;
                 var tmpTxt = RequestSelection.Text.Trim();
                 if (tmpTxt != "")
                 {
@@ -247,16 +247,19 @@ namespace SimilarHighlight
         {
             if (e.ClickCount == 2)
             {
-                RequestSelection = this.Document.Selection;
+                RequestSelection = Document.Selection;
             }
             else
             {
-                RequestSelection = this.Document.Selection;
+                RequestSelection = Document.Selection;
             }
 
             if (RequestSelection.Text.Trim() != "")
             {
-                RightMarginFactory.rightMargin.rightMarginElement.SetCurrentPoint(ConvertToPosition(RequestSelection.TopPoint));
+                int lineNum = RequestSelection.TopPoint.Line - 1;
+                int currentpos = View.TextSnapshot.GetLineFromLineNumber(lineNum).Start + 1;
+                RightMarginFactory.rightMargin.rightMarginElement.SetCurrentPoint(new SnapshotPoint(View.TextSnapshot, currentpos));
+               //     ConvertToPosition(RequestSelection.TopPoint)
                 // Highlight by background thread.
                 ThreadStartHighlighting();
                 
@@ -463,7 +466,7 @@ namespace SimilarHighlight
 
                 // TODO if the elements of a line is bigger than 1, the position need to fix.
                 var curSelection = wordSpan.AsParallel().Select((item, index) => new { Item = item, Index = index })
-                        .First(sel => (sel.Item.Start <= currentStart &&
+                        .FirstOrDefault(sel => (sel.Item.Start <= currentStart &&
                         sel.Item.End >= currentEnd));
 
                 if (curSelection != null)
@@ -484,6 +487,38 @@ namespace SimilarHighlight
             }
         }
 
+        public static void SetCurrentScrollPointLine(SnapshotPoint currentPoint)
+        {
+            NormalizedSnapshotSpanCollection wordSpan = new NormalizedSnapshotSpanCollection(NewSpanAll);
+         //   View.TextSnapshot.GetLineNumberFromPosition(currentPoint.Position);
+            // TODO if the elements of a line is bigger than 1, the position need to fix.
+            int linenum = View.TextSnapshot.GetLineNumberFromPosition(currentPoint.Position);
+            try
+            {
+                var curSelection = wordSpan.Select((item, index) => new { Item = item, Index = index })
+                        .FirstOrDefault(sel => (View.TextSnapshot.GetLineNumberFromPosition(sel.Item.Start.Position) == linenum));
+                if (curSelection != null)
+                {
+                    CurrentSelectNum = curSelection.Index;
+                    TMPCurrentSelectNum = CurrentSelectNum;
+                    var newSpan = wordSpan.ElementAt(CurrentSelectNum);
+                    var newStartOffset = ConvertToCharOffset(newSpan.Start);
+                    Document.Selection.MoveToAbsoluteOffset(newStartOffset, false);
+                    Document.Selection.MoveToAbsoluteOffset(newStartOffset + newSpan.Length, true);
+                    // Set the new element.
+                    RightMarginFactory.rightMargin.rightMarginElement.SetCurrentPoint(newSpan.Start);
+                }
+            }
+            catch (Exception exc)
+            {
+                Debug.Write(exc.ToString());
+            }
+            //Application.Current.Dispatcher.Invoke((Action)(() =>
+            //{
+            //    RightMarginFactory.rightMargin.rightMarginElement.RedrawRightMargin();
+            //}));
+        }
+        
         private void RedrawMargin()
         {
             Application.Current.Dispatcher.Invoke((Action)(() =>
@@ -554,15 +589,15 @@ namespace SimilarHighlight
         {
             int lineNum = selectPoint.Line - 1;
             int offset = selectPoint.LineCharOffset - 1;
-            return this.View.TextSnapshot.GetLineFromLineNumber(lineNum).Start + offset;
+            return View.TextSnapshot.GetLineFromLineNumber(lineNum).Start + offset;
         }
 
         // The position data will be converted from SnapshotPoint to TextSelection.
-        internal int ConvertToCharOffset(SnapshotPoint point)
+        internal static int ConvertToCharOffset(SnapshotPoint point)
         {
-            if (this.hasSR)
+            if (hasSR)
             {
-                int lineNum = this.View.TextSnapshot.GetLineNumberFromPosition(point.Position);
+                int lineNum = View.TextSnapshot.GetLineNumberFromPosition(point.Position);
                 return point.Position - lineNum + 1;
             }
             return point.Position + 1;
@@ -581,12 +616,12 @@ namespace SimilarHighlight
                 OutputMsg(fragment);
                 if (FixKit != null && FixKit.Item1.IsMatch(fragment))
                 {
-                    tmpStart = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item1 + FixKit.Item2.Item1);
-                    tmpEnd = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item2 - FixKit.Item2.Item2);
+                    tmpStart = new SnapshotPoint(View.TextSnapshot, startAndEnd.Item1 + FixKit.Item2.Item1);
+                    tmpEnd = new SnapshotPoint(View.TextSnapshot, startAndEnd.Item2 - FixKit.Item2.Item2);
                 }
                 else {
-                    tmpStart = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item1);
-                    tmpEnd = new SnapshotPoint(this.View.TextSnapshot, startAndEnd.Item2);
+                    tmpStart = new SnapshotPoint(View.TextSnapshot, startAndEnd.Item1);
+                    tmpEnd = new SnapshotPoint(View.TextSnapshot, startAndEnd.Item2);
                 }
 
                 var s_span = new SnapshotSpan(tmpStart, tmpEnd);
@@ -735,7 +770,7 @@ namespace SimilarHighlight
 
                 if (blEdge) return;
 
-                var selected = this.Document.Selection;
+                var selected = Document.Selection;
                 if (selected != null)
                 {
                     // Get the position data of the similar element.

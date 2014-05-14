@@ -53,6 +53,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         private SimpleScrollBar _scrollBar;
 
         private OverviewMarginProvider _provider;
+        private RightMarginFactory RightMarginFactory;
 
         public static readonly EditorOptionKey<Color> OffScreenColorId = new EditorOptionKey<Color>("OverviewMarginImpl/OffScreenColor");
         public static readonly EditorOptionKey<Color> VisibleColorId = new EditorOptionKey<Color>("OverviewMarginImpl/VisibleColor");
@@ -65,7 +66,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             : base(PredefinedOverviewMarginNames.Overview, Orientation.Vertical, textViewHost, myProvider.OrderedMarginProviders)
         {
             _provider = myProvider;
-
+            RightMarginFactory = this.rightMarginFactory as RightMarginFactory;
             _provider.LoadOption(base.TextViewHost.TextView.Options, OverviewMargin.OffScreenColorId.Name);
             _provider.LoadOption(base.TextViewHost.TextView.Options, OverviewMargin.VisibleColorId.Name);
 
@@ -189,7 +190,12 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             this.CaptureMouse();
 
             Point pt = e.GetPosition(this);
-            this.ScrollViewToYCoordinate(pt.Y, e.ClickCount == 2);
+            SnapshotPoint currentPoint = this.ScrollViewToYCoordinate(pt.Y, e.ClickCount == 2);
+        //    int lineNum = this.View.TextSnapshot.GetLineNumberFromPosition(currentPoint.Position);
+      //      RightMarginElement rightMarginElement = this.RightMarginFactory.rightMargin.rightMarginElement;
+            HLTextTagger.SetCurrentScrollPointLine(currentPoint);
+        //    IList<SnapshotSpan> matches = HLTextTagger.NewSpanAll;
+
         }
 
         void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -233,7 +239,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         /// the last line of text will be scrolled proportionally higher than center, until
         /// only one line of text is visible.
         /// </remarks>
-        internal void ScrollViewToYCoordinate(double y, bool expand)
+        internal SnapshotPoint ScrollViewToYCoordinate(double y, bool expand)
         {
             double yLastLine = _scrollBar.TrackSpanBottom - _scrollBar.ThumbHeight;
             if (y < yLastLine)
@@ -243,6 +249,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
                 if (expand)
                     this.Expand(position);
                 base.TextViewHost.TextView.ViewScroller.EnsureSpanVisible(new SnapshotSpan(position, 0), EnsureSpanVisibleOptions.AlwaysCenter);
+                return position;
             }
             else
             {
@@ -257,6 +264,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
                 if (expand)
                     this.Expand(end);
                 base.TextViewHost.TextView.DisplayTextLineContainingBufferPosition(end, dyDistanceFromTopOfViewport, ViewRelativePosition.Top);
+                return end;
             }
         }
 
