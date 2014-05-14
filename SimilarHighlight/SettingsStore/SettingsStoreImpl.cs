@@ -6,7 +6,7 @@ using Microsoft.VisualStudio.Text.Editor;
 using System.Windows.Media;
 using System.Globalization;
 
-namespace SimilarHighlight.SettingsStore.Implementation
+namespace SimilarHighlight.SettingsStore
 {
     /// <summary>
     /// Provides an implementation of an ISettingsStore that saves options in the registry.

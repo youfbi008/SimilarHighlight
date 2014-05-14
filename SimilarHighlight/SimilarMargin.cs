@@ -10,31 +10,31 @@ namespace SimilarHighlight
     /// and all instances of words that match the word under the caret.
     /// </summary>
     [Export(typeof(IWpfTextViewMargin))]
-    internal class RightMargin : IWpfTextViewMargin
+    internal class SimilarMargin : IWpfTextViewMargin
     {
         /// <summary>
         /// Name of this margin.
         /// </summary>
-        public const string Name = "RightMargin";
+        public const string Name = "SimilarMargin";
 
         #region Private Members
-        public RightMarginElement rightMarginElement;
+        public SimilarMarginElement similarMarginElement;
         bool _isDisposed = false;
         #endregion
 
         /// <summary>
-        /// Constructor for the RightMargin.
+        /// Constructor for the SimilarMargin.
         /// </summary>
         /// <param name="textViewHost">The IWpfTextViewHost in which this margin will be displayed.</param>
         /// <param name="navigator">Instance of an ITextStructureNavigator used to define words in the host's TextView. Created from the
         /// ITextStructureNavigatorFactory service.</param>
-        public RightMargin(IWpfTextViewHost textViewHost, IVerticalScrollBar scrollBar, RightMarginFactory factory)
+        public SimilarMargin(IWpfTextViewHost textViewHost, IVerticalScrollBar scrollBar, SimilarMarginFactory factory)
         {
             // Validate
             if (textViewHost == null)
                 throw new ArgumentNullException("textViewHost");
 
-            this.rightMarginElement = new RightMarginElement(textViewHost.TextView, factory, scrollBar);
+            this.similarMarginElement = new SimilarMarginElement(textViewHost.TextView, factory, scrollBar);
         }
 
         #region IWpfTextViewMargin Members
@@ -46,7 +46,7 @@ namespace SimilarHighlight
             get
             {
                 ThrowIfDisposed();
-                return this.rightMarginElement;
+                return this.similarMarginElement;
             }
         }
         #endregion
@@ -60,7 +60,7 @@ namespace SimilarHighlight
             get
             {
                 ThrowIfDisposed();
-                return this.rightMarginElement.ActualWidth;
+                return this.similarMarginElement.ActualWidth;
             }
         }
 
@@ -72,13 +72,13 @@ namespace SimilarHighlight
             get
             {
                 ThrowIfDisposed();
-                return this.rightMarginElement.Enabled;
+                return this.similarMarginElement.Enabled;
             }
         }
 
         public ITextViewMargin GetTextViewMargin(string marginName)
         {
-            return string.Compare(marginName, RightMargin.Name, StringComparison.OrdinalIgnoreCase) == 0 ? this : (ITextViewMargin)null;
+            return string.Compare(marginName, SimilarMargin.Name, StringComparison.OrdinalIgnoreCase) == 0 ? this : (ITextViewMargin)null;
         }
 
         /// <summary>

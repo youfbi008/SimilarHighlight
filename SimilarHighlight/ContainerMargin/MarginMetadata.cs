@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using Microsoft.VisualStudio.Utilities;
 
-namespace SimilarHighlight.OverviewMargin.Implementation
+namespace SimilarHighlight.ContainerMargin
 {
     public interface IContentTypeMetadata
     {

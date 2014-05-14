@@ -1,11 +1,11 @@
 ﻿using Microsoft.VisualStudio.Text.Editor;
 
-namespace SimilarHighlight.OverviewMargin
+namespace SimilarHighlight.ContainerwMargin
 {
     /// <summary>
-    /// Represents an overview margin.
+    /// Represents an container margin.
     /// </summary>
-    public interface IOverviewMargin
+    public interface IContainerMargin
     {
         /// <summary>
         /// Gets the <see cref="IVerticalScrollBar"/> used to map between buffer positions and y-coordinates.

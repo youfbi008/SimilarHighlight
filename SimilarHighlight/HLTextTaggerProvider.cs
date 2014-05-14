@@ -15,7 +15,7 @@ using EnvDTE;
 using EnvDTE80;
 using System.Diagnostics;
 using SimilarHighlight.OutputWindow;
-using SimilarHighlight.OverviewMargin.Implementation;
+using SimilarHighlight.ContainerMargin;
 
 namespace SimilarHighlight
 {
@@ -34,9 +34,9 @@ namespace SimilarHighlight
         internal SVsServiceProvider ServiceProvider = null;
 
         [ImportMany]
-        internal List<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> marginProviders;
+        internal List<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> marginProviders { get; private set; }
 
-        private IWpfTextViewMarginProvider rightMarginFactory { get; set; }
+        private IWpfTextViewMarginProvider similarMarginFactory { get; set; }
         private IOutputWindowPane outputWindow { get; set; }
         
         public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
@@ -68,13 +68,13 @@ namespace SimilarHighlight
             }
 
             // A margin factory to add a right marigin which mark highlighted elements' points.
-            if (rightMarginFactory == null)
+            if (similarMarginFactory == null)
             {
                 foreach (var marginProvider in marginProviders)
                 {
-                    if (String.Compare(marginProvider.Metadata.Name, "RightMargin", StringComparison.OrdinalIgnoreCase) == 0)
+                    if (String.Compare(marginProvider.Metadata.Name, "SimilarMargin", StringComparison.OrdinalIgnoreCase) == 0)
                     {
-                        rightMarginFactory = marginProvider.Value;
+                        similarMarginFactory = marginProvider.Value;
                     }
                 }
             }
@@ -85,7 +85,7 @@ namespace SimilarHighlight
                 outputWindow = OutputWindowService.TryGetPane("Similar");
             }
 
-            return new HLTextTagger(textView as IWpfTextView, buffer, nowDocument, outputWindow, rightMarginFactory) as ITagger<T>;
+            return new HLTextTagger(textView as IWpfTextView, buffer, nowDocument, outputWindow, similarMarginFactory) as ITagger<T>;
         }
     }
 }

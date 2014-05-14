@@ -7,22 +7,23 @@ using Microsoft.VisualStudio.Text.Projection;
 using Microsoft.VisualStudio.Utilities;
 using SimilarHighlight.SettingsStore;
 using Microsoft.VisualStudio.Text.Tagging;
+using SimilarHighlight.ContainerMargin;
 
-namespace SimilarHighlight.OverviewMargin.Implementation
+namespace SimilarHighlight.ContainerMargin
 {
     [Export(typeof(IWpfTextViewMarginProvider))]
-    [Name(PredefinedOverviewMarginNames.Overview)]
+    [Name(PredefinedContainerMargin.Container)]
     [MarginContainer(PredefinedMarginNames.VerticalScrollBarContainer)]
     [Order(After = PredefinedMarginNames.VerticalScrollBar)]
     [ContentType("text")]
     [TextViewRole(PredefinedTextViewRoles.Document)]
-    internal sealed class OverviewMarginProvider : IWpfTextViewMarginProvider
+    internal sealed class ContainerMarginProvider : IWpfTextViewMarginProvider
     {
         [ImportMany]
-        internal List<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> _marginProviders;
+        internal List<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> _marginProviders { get; private set; }
 
         [Import]
-        internal IScrollMapFactoryService _scrollMapFactory;
+        internal IScrollMapFactoryService _scrollMapFactory { get; private set; }
 
         [Import]
         internal IOutliningManagerService OutliningManagerService { get; private set; }
@@ -72,13 +73,13 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         }
 
         /// <summary>
-        /// Create an instance of the OverviewMargin in the specified <see cref="IWpfTextViewHost"/>.
+        /// Create an instance of the ContainerMargin in the specified <see cref="IWpfTextViewHost"/>.
         /// </summary>
-        /// <param name="textViewHost">The <see cref="IWpfTextViewHost"/> in which the OverviewMargin will be displayed.</param>
-        /// <returns>The newly created OverviewMargin.</returns>
+        /// <param name="textViewHost">The <see cref="IWpfTextViewHost"/> in which the ContainerMargin will be displayed.</param>
+        /// <returns>The newly created ContainerMargin.</returns>
         public IWpfTextViewMargin CreateMargin(IWpfTextViewHost textViewHost, IWpfTextViewMargin containerMargin)
         {
-            return OverviewMargin.Create(textViewHost, containerMargin, this);
+            return ContainerMargin.Create(textViewHost, containerMargin, this);
         }
     }
 }

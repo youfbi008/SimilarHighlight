@@ -12,6 +12,6 @@ namespace SimilarHighlight.OutputWindow
     {
         [Export]
         [Name("Similar")]
-        internal static OutputWindowDefinition SimilarOutputWindowDefinition;
+        internal static OutputWindowDefinition SimilarOutputWindowDefinition = null;
     }
 }

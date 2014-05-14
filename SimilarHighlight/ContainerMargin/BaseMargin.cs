@@ -6,14 +6,14 @@ using System.Windows.Controls;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 
-namespace SimilarHighlight.OverviewMargin.Implementation
+namespace SimilarHighlight.ContainerMargin
 {
     /// <summary>
     /// A base class implementation of an editor margin that hosts other editor margins inside
     /// it. The control can be oriented either horizontally or vertically and supports ordered
     /// margins to be added inside it.
     /// </summary>
-    internal class ContainerMargin : Grid, IWpfTextViewMargin
+    internal class BaseMargin : Grid, IWpfTextViewMargin
     {
         #region Private Members
         bool _isDiposed = false;
@@ -25,9 +25,9 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         private readonly IList<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> _marginProviders;
 
         protected readonly IWpfTextViewHost TextViewHost;
-        protected IWpfTextViewMarginProvider rightMarginFactory { get; set; }
+        protected IWpfTextViewMarginProvider similarMarginFactory { get; set; }
 
-        protected ContainerMargin(string name, Orientation orientation, IWpfTextViewHost textViewHost,
+        protected BaseMargin(string name, Orientation orientation, IWpfTextViewHost textViewHost,
                                   IList<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> marginProviders)
         {
             _marginName = name;
@@ -42,9 +42,9 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             {
                 if (String.Compare(marginProvider.Metadata.MarginContainer, _marginName, StringComparison.OrdinalIgnoreCase) == 0)
                 {
-                    if (String.Compare(marginProvider.Metadata.Name, "RightMargin", StringComparison.OrdinalIgnoreCase) == 0)
+                    if (String.Compare(marginProvider.Metadata.Name, "SimilarMargin", StringComparison.OrdinalIgnoreCase) == 0)
                     {
-                        rightMarginFactory = marginProvider.Value;
+                        similarMarginFactory = marginProvider.Value;
                     }
                     
                     if (viewRoles.ContainsAny(marginProvider.Metadata.TextViewRoles))
@@ -123,7 +123,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         protected void ThrowIfDisposed()
         {
             if (_isDiposed)
-                throw new ObjectDisposedException("ContainerMarginMargin");
+                throw new ObjectDisposedException("BaseMargin");
         }
 
         protected virtual void Initialize()

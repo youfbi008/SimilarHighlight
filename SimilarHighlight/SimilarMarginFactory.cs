@@ -1,18 +1,19 @@
 using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
-using SimilarHighlight.OverviewMargin;
+using SimilarHighlight.ContainerMargin;
 using SimilarHighlight.SettingsStore;
+using SimilarHighlight.ContainerwMargin;
 
 namespace SimilarHighlight
 {
     [Export(typeof(IWpfTextViewMarginProvider))]
     
-    [Name(RightMargin.Name)]
-    [MarginContainer(PredefinedOverviewMarginNames.Overview)]
+    [Name(SimilarMargin.Name)]
+    [MarginContainer(PredefinedContainerMargin.Container)]
     [ContentType("text")]
     [TextViewRole(PredefinedTextViewRoles.Interactive)]
-    sealed class RightMarginFactory : IWpfTextViewMarginProvider
+    sealed class SimilarMarginFactory : IWpfTextViewMarginProvider
     {
         [Import(AllowDefault = true)]
         internal ISettingsStore _settingsStore { get; set; }
@@ -25,7 +26,7 @@ namespace SimilarHighlight
             }
             return false;
         }
-        public RightMargin rightMargin;
+        public SimilarMargin similarMargin;
 
         /// <summary>
         /// Create an instance of the CaretMargin in the specified <see cref="IWpfTextViewHost"/>.
@@ -34,15 +35,15 @@ namespace SimilarHighlight
         /// <returns>The newly created CaretMargin.</returns>
         public IWpfTextViewMargin CreateMargin(IWpfTextViewHost textViewHost, IWpfTextViewMargin containerMargin)
         {
-            IOverviewMargin containerMarginAsOverviewMargin = containerMargin as IOverviewMargin;
-            if (containerMarginAsOverviewMargin != null)
+            IContainerMargin containerMarginAsContainerMargin = containerMargin as IContainerMargin;
+            if (containerMarginAsContainerMargin != null)
             {
                 //The caret margin needs to know what the constitutes a word, which means using the text structure navigator
                 //(since the definition of a word can change based on context).
 
                 //Create the caret margin, passing it a newly instantiated text structure navigator for the view.
-                this.rightMargin = new RightMargin(textViewHost, containerMarginAsOverviewMargin.ScrollBar, this);
-                return this.rightMargin;
+                this.similarMargin = new SimilarMargin(textViewHost, containerMarginAsContainerMargin.ScrollBar, this);
+                return this.similarMargin;
             }
             else
                 return null;

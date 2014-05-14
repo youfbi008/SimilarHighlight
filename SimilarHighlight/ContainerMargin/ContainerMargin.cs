@@ -12,15 +12,16 @@ using Microsoft.VisualStudio.Text.Formatting;
 using Microsoft.VisualStudio.Text.Outlining;
 using Microsoft.VisualStudio.Text.Projection;
 using Microsoft.VisualStudio.Utilities;
+using SimilarHighlight.ContainerwMargin;
 
-namespace SimilarHighlight.OverviewMargin.Implementation
+namespace SimilarHighlight.ContainerMargin
 {
     [Export(typeof(EditorOptionDefinition))]
     public sealed class OffScreenColor : ViewOptionDefinition<Color>
     {
         public override Color Default { get { return Color.FromArgb(0x30, 0x00, 0x00, 0x00); } }
 
-        public override EditorOptionKey<Color> Key { get { return OverviewMargin.OffScreenColorId; } }
+        public override EditorOptionKey<Color> Key { get { return ContainerMargin.OffScreenColorId; } }
     }
 
     [Export(typeof(EditorOptionDefinition))]
@@ -28,23 +29,20 @@ namespace SimilarHighlight.OverviewMargin.Implementation
     {
         public override Color Default { get { return Color.FromArgb(0x00, 0xff, 0xff, 0xff); } }
 
-        public override EditorOptionKey<Color> Key { get { return OverviewMargin.VisibleColorId; } }
+        public override EditorOptionKey<Color> Key { get { return ContainerMargin.VisibleColorId; } }
     }
 
     /// <summary>
-    /// Manages the logical content of the OverviewMargin, which displays information
+    /// Manages the logical content of the ContainerMargin, which displays information
     /// relative to the entire document (optionally including elided regions) and supports
     /// click navigation.
     /// </summary>
-    internal class OverviewMargin : ContainerMargin, IOverviewMargin
+    internal class ContainerMargin : BaseMargin, IContainerMargin
     {
         #region Private Members
         const double VerticalPadding = 1.0;
-        const double LeftPadding = 8.0;
-        const double RightPadding = 6.0;
         const double MinViewportHeight = 5.0; // smallest that viewport extent will be drawn
 
-        private readonly Brush _elisionBrush; // background of elided regions
         private readonly Brush _offScreenBrush; // background for document areas outside of viewport extent
         private readonly Brush _visibleBrush; // background for document areas inside of viewport extent
 
@@ -52,30 +50,30 @@ namespace SimilarHighlight.OverviewMargin.Implementation
 
         private SimpleScrollBar _scrollBar;
 
-        private OverviewMarginProvider _provider;
-        private RightMarginFactory RightMarginFactory;
+        private ContainerMarginProvider _provider;
+        private SimilarMarginFactory SimilarMarginFactory;
 
-        public static readonly EditorOptionKey<Color> OffScreenColorId = new EditorOptionKey<Color>("OverviewMarginImpl/OffScreenColor");
-        public static readonly EditorOptionKey<Color> VisibleColorId = new EditorOptionKey<Color>("OverviewMarginImpl/VisibleColor");
+        public static readonly EditorOptionKey<Color> OffScreenColorId = new EditorOptionKey<Color>("ContainerMarginImpl/OffScreenColor");
+        public static readonly EditorOptionKey<Color> VisibleColorId = new EditorOptionKey<Color>("ContainerMarginImpl/VisibleColor");
 
         /// <summary>
-        /// Constructor for the OverviewMargin.
+        /// Constructor for the ContainerMargin.
         /// </summary>
         /// <param name="textViewHost">The IWpfTextViewHost in which this margin will be displayed.</param>
-        private OverviewMargin(IWpfTextViewHost textViewHost, IWpfTextViewMargin containerMargin, OverviewMarginProvider myProvider)
-            : base(PredefinedOverviewMarginNames.Overview, Orientation.Vertical, textViewHost, myProvider.OrderedMarginProviders)
+        private ContainerMargin(IWpfTextViewHost textViewHost, IWpfTextViewMargin containerMargin, ContainerMarginProvider myProvider)
+            : base(PredefinedContainerMargin.Container, Orientation.Vertical, textViewHost, myProvider.OrderedMarginProviders)
         {
             _provider = myProvider;
-            RightMarginFactory = this.rightMarginFactory as RightMarginFactory;
-            _provider.LoadOption(base.TextViewHost.TextView.Options, OverviewMargin.OffScreenColorId.Name);
-            _provider.LoadOption(base.TextViewHost.TextView.Options, OverviewMargin.VisibleColorId.Name);
+            SimilarMarginFactory = this.similarMarginFactory as SimilarMarginFactory;
+            _provider.LoadOption(base.TextViewHost.TextView.Options, ContainerMargin.OffScreenColorId.Name);
+            _provider.LoadOption(base.TextViewHost.TextView.Options, ContainerMargin.VisibleColorId.Name);
 
             _outliningManager = myProvider.OutliningManagerService.GetOutliningManager(textViewHost.TextView);
 
             _scrollBar = new SimpleScrollBar(textViewHost, containerMargin, myProvider._scrollMapFactory, this, false);
 
-            _offScreenBrush = this.GetBrush(OverviewMargin.OffScreenColorId);
-            _visibleBrush = this.GetBrush(OverviewMargin.VisibleColorId);
+            _offScreenBrush = this.GetBrush(ContainerMargin.OffScreenColorId);
+            _visibleBrush = this.GetBrush(ContainerMargin.VisibleColorId);
 
             base.Background = Brushes.Transparent;
             base.ClipToBounds = true;
@@ -112,19 +110,19 @@ namespace SimilarHighlight.OverviewMargin.Implementation
         #endregion
 
         /// <summary>
-        /// Factory for the OverviewMargin.
+        /// Factory for the ContainerMargin.
         /// </summary>
         /// <param name="textViewHost">The IWpfTextViewHost in which this margin will be displayed.</param>
         /// <param name="myProvider">Will be queried for various imported components.</param>
-        public static OverviewMargin Create(IWpfTextViewHost textViewHost, IWpfTextViewMargin containerMargin, OverviewMarginProvider myProvider)
+        public static ContainerMargin Create(IWpfTextViewHost textViewHost, IWpfTextViewMargin containerMargin, ContainerMarginProvider myProvider)
         {
-            OverviewMargin margin = new OverviewMargin(textViewHost, containerMargin, myProvider);
+            ContainerMargin margin = new ContainerMargin(textViewHost, containerMargin, myProvider);
             margin.Initialize();
 
             return margin;
         }
 
-        #region IOverviewMargin members
+        #region IContainerMargin members
         public IVerticalScrollBar ScrollBar
         {
             get
@@ -177,7 +175,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
 
         protected void OnOptionsChanged(object sender, EditorOptionChangedEventArgs e)
         {
-            // Note there is NOT an option for OverviewMarginEnabled.  This is because if the overview margin
+            // Note there is NOT an option for ContainerMarginEnabled.  This is because if the container margin
             // has no children, it is inactive.
 
             var options = base.TextViewHost.TextView.Options;
@@ -191,11 +189,8 @@ namespace SimilarHighlight.OverviewMargin.Implementation
 
             Point pt = e.GetPosition(this);
             SnapshotPoint currentPoint = this.ScrollViewToYCoordinate(pt.Y, e.ClickCount == 2);
-        //    int lineNum = this.View.TextSnapshot.GetLineNumberFromPosition(currentPoint.Position);
-      //      RightMarginElement rightMarginElement = this.RightMarginFactory.rightMargin.rightMarginElement;
+            // Set the current selection by selecting point from scroll margin.
             HLTextTagger.SetCurrentScrollPointLine(currentPoint);
-        //    IList<SnapshotSpan> matches = HLTextTagger.NewSpanAll;
-
         }
 
         void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -220,10 +215,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             if (ActualWidth > 0.0)
             {
                 RenderViewportExtent(drawingContext);
-                //if (!_scrollBar.UseElidedCoordinates)
-                //{
-                //    RenderElidedRegions(drawingContext);
-                //}
             }
         }
         #endregion
@@ -342,7 +333,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             private IWpfTextView _textView;
             private IWpfTextViewMargin _realScrollBarMargin;
             private IVerticalScrollBar _realScrollBar;
-            private bool _useElidedCoordinates = false;
+            private bool _useElidedCoordinates = true;
 
             double _trackSpanTop;
             double _trackSpanBottom;
@@ -510,7 +501,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
                     _realScrollBar = _realScrollBarMargin as IVerticalScrollBar;
                     if (_realScrollBar != null)
                     {
-                        _realScrollBarMargin.VisualElement.IsVisibleChanged += OnScrollBarIsVisibleChanged;
                         _realScrollBar.TrackSpanChanged += OnScrollBarTrackSpanChanged;
                     }
                 }
@@ -523,16 +513,6 @@ namespace SimilarHighlight.OverviewMargin.Implementation
                 _scrollMap.MappingChanged += delegate { this.RaiseTrackChangedEvent(); };
 
                 container.SizeChanged += OnContainerSizeChanged;
-            }
-
-            void OnScrollBarIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
-            {
-                this.ResetTrackSpan();
-
-                if (_useElidedCoordinates)
-                    this.ResetScrollMap();  //This will indirectly cause RaiseTrackChangedEvent to be called.
-                else
-                    this.RaiseTrackChangedEvent();
             }
 
             void OnContainerSizeChanged(object sender, EventArgs e)
@@ -563,6 +543,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             {
                 double scrollMapPosition = _scrollMap.GetCoordinateAtBufferPosition(bufferPosition);
                 return this.GetYCoordinateOfScrollMapPosition(scrollMapPosition);
+          //      return _realScrollBar.GetYCoordinateOfBufferPosition(bufferPosition);
             }
 
             public double GetYCoordinateOfScrollMapPosition(double scrollMapPosition)

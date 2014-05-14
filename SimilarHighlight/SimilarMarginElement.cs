@@ -8,7 +8,7 @@ using System.Windows.Threading;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Formatting;
-using SimilarHighlight.OverviewMargin;
+using SimilarHighlight.ContainerMargin;
 using System.Diagnostics;
 
 namespace SimilarHighlight
@@ -17,21 +17,21 @@ namespace SimilarHighlight
     internal sealed class Enabled : EditorOptionDefinition<bool>
     {
         public override bool Default { get { return true; } }
-        public override EditorOptionKey<bool> Key { get { return RightMarginElement.EnabledOptionId; } }
+        public override EditorOptionKey<bool> Key { get { return SimilarMarginElement.EnabledOptionId; } }
     }
 
     [Export(typeof(EditorOptionDefinition))]
     internal sealed class CaretColor : EditorOptionDefinition<Color>
     {
         public override Color Default { get { return Colors.Red; } }
-        public override EditorOptionKey<Color> Key { get { return RightMarginElement.CaretColorId; } }
+        public override EditorOptionKey<Color> Key { get { return SimilarMarginElement.CaretColorId; } }
     }
 
     [Export(typeof(EditorOptionDefinition))]
     internal sealed class MatchColor : EditorOptionDefinition<Color>
     {
         public override Color Default { get { return Colors.Blue; } }
-        public override EditorOptionKey<Color> Key { get { return RightMarginElement.MatchColorId; } }
+        public override EditorOptionKey<Color> Key { get { return SimilarMarginElement.MatchColorId; } }
     }
 
     [Export(typeof(EditorOptionDefinition))]
@@ -42,18 +42,16 @@ namespace SimilarHighlight
         {
             return (proposedValue >= 3.0) && (proposedValue <= 60.0);
         }
-        public override EditorOptionKey<double> Key { get { return RightMarginElement.MarginWidthId; } }
+        public override EditorOptionKey<double> Key { get { return SimilarMarginElement.MarginWidthId; } }
     }
 
     [Export(typeof(FrameworkElement))]
     /// <summary>
     /// Helper class to handle the rendering of the caret margin.
     /// </summary>
-    class RightMarginElement : FrameworkElement
+    class SimilarMarginElement : FrameworkElement
     {
         private IList<SnapshotSpan> SpanAll { get; set; }
-        public static int OldHighlightNo { get { return oldHighlightNo; } set { oldHighlightNo = value; } }
-        private static int oldHighlightNo { get; set; }
         private readonly IWpfTextView textView;
         private readonly IVerticalScrollBar scrollBar;
 
@@ -76,24 +74,23 @@ namespace SimilarHighlight
         /// <param name="factory">Instance of the CaretMarginFactory that is creating the margin.</param>
         /// <param name="verticalScrollbar">Vertical scrollbar of the ITextViewHost that contains <paramref name="textView"/>.</param>
         [ImportingConstructor]
-        public RightMarginElement(IWpfTextView textView, RightMarginFactory factory, IVerticalScrollBar verticalScrollbar)
+        public SimilarMarginElement(IWpfTextView textView, SimilarMarginFactory factory, IVerticalScrollBar verticalScrollbar)
         {
             this.textView = textView;
 
-            oldHighlightNo = 0;
-            factory.LoadOption(textView.Options, RightMarginElement.EnabledOptionId.Name);
-            factory.LoadOption(textView.Options, RightMarginElement.CaretColorId.Name);
-            factory.LoadOption(textView.Options, RightMarginElement.MatchColorId.Name);
-            factory.LoadOption(textView.Options, RightMarginElement.MarginWidthId.Name);
+            factory.LoadOption(textView.Options, SimilarMarginElement.EnabledOptionId.Name);
+            factory.LoadOption(textView.Options, SimilarMarginElement.CaretColorId.Name);
+            factory.LoadOption(textView.Options, SimilarMarginElement.MatchColorId.Name);
+            factory.LoadOption(textView.Options, SimilarMarginElement.MarginWidthId.Name);
 
             this.scrollBar = verticalScrollbar;
 
             //Make our width big enough to see, but not so big that it consumes a lot of
             //real-estate.
-            this.Width = textView.Options.GetOptionValue(RightMarginElement.MarginWidthId);
+            this.Width = textView.Options.GetOptionValue(SimilarMarginElement.MarginWidthId);
 
-            this.caretBrush = GetBrush(RightMarginElement.CaretColorId);
-            this.matchBrush = GetBrush(RightMarginElement.MatchColorId);
+            this.caretBrush = GetBrush(SimilarMarginElement.CaretColorId);
+            this.matchBrush = GetBrush(SimilarMarginElement.MatchColorId);
 
             this.textView.Closed += OnClosed;
         }
@@ -104,7 +101,7 @@ namespace SimilarHighlight
             this.InvalidateVisual();
         }
 
-        public void RedrawRightMargin()
+        public void RedrawSimilarMargin()
         {
             this.InvalidateVisual();
         }
@@ -127,7 +124,7 @@ namespace SimilarHighlight
         {
             get
             {
-                return this.textView.Options.GetOptionValue<bool>(RightMarginElement.EnabledOptionId);
+                return this.textView.Options.GetOptionValue<bool>(SimilarMarginElement.EnabledOptionId);
             }
         }
 
@@ -156,9 +153,8 @@ namespace SimilarHighlight
 
                 try
                 {
-                    double lastY = double.MinValue;
                     int markerCount = Math.Min(1000, matches.Count);
-                    for (int i = 0; (i < markerCount); ++i)
+                    for (int i = 0; i < markerCount; ++i)
                     {
                         //Get (for small lists) the index of every match or, for long lists, the index of every
                         //(count / 1000)th entry. Use longs to avoid any possible integer overflow problems.
@@ -169,11 +165,8 @@ namespace SimilarHighlight
                         //but this will handle it if -- for some reason -- they are not).
                         double y = this.scrollBar.GetYCoordinateOfBufferPosition(match.TranslateTo(this.textView.TextSnapshot, PointTrackingMode.Negative));
                         MarkThickness = this.ActualHeight / (match.Snapshot.LineCount + HLTextTagger.PaneLineCnt + 1);
-                        //if (y + MarkThickness > lastY)
-                        //{
-                        //    lastY = y;
-                            this.DrawMark(drawingContext, this.matchBrush, y);
-                        //}
+                        
+                        this.DrawMark(drawingContext, this.matchBrush, y);
                     }
                 }
                 catch (Exception exc)
