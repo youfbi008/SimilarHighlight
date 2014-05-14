@@ -20,7 +20,7 @@ namespace SimilarHighlight
     {
         public HLTextFormatDefinition()
         {
-            this.BackgroundColor = Colors.LightBlue;
+            this.BackgroundColor = Colors.LightGreen;
             this.ForegroundColor = Colors.DarkBlue;
             this.DisplayName = "Highlight Word";
             this.ZOrder = 5;

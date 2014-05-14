@@ -60,6 +60,7 @@ namespace SimilarHighlight
         public static int HighlightNo = 0;
         public static bool IsChecked = false;
         public static EnvDTE.Document Document { get; set; }
+        public static int PaneLineCnt { get; set; }
         // Count the number of left mouse button clicks.
         int CntLeftClick { get; set; }
         // current selection
@@ -201,6 +202,7 @@ namespace SimilarHighlight
                 {
                     return;
                 }
+                PaneLineCnt = RequestSelection.TextPane.Height;
                 if (e.Key == Key.Left)
                 {
                     // Make the previous similar element highlighted.
@@ -257,9 +259,11 @@ namespace SimilarHighlight
             if (RequestSelection.Text.Trim() != "")
             {
                 int lineNum = RequestSelection.TopPoint.Line - 1;
+                PaneLineCnt = RequestSelection.TextPane.Height;
                 int currentpos = View.TextSnapshot.GetLineFromLineNumber(lineNum).Start + 1;
+                //IsChecked = true;
                 RightMarginFactory.rightMargin.rightMarginElement.SetCurrentPoint(new SnapshotPoint(View.TextSnapshot, currentpos));
-               //     ConvertToPosition(RequestSelection.TopPoint)
+                
                 // Highlight by background thread.
                 ThreadStartHighlighting();
                 
@@ -400,11 +404,11 @@ namespace SimilarHighlight
                 }
 
                 Locations.Add(tmpLocationInfo);
-                if (Locations.Count == 1)
-                {
-                    IsChecked = true;
-                }
-                else { IsChecked = false; }
+                //if (Locations.Count == 1)
+                //{
+                //    IsChecked = true;
+                //}
+                //else { IsChecked = false; }
             }
             catch (Exception exc)
             {
@@ -475,8 +479,8 @@ namespace SimilarHighlight
                     // TODO temp  added
                     TMPCurrentSelectNum = CurrentSelectNum;
                 }
+                //IsChecked = true;
                 this.RedrawMargin();
-               
                 // If another change hasn't happened, do a real update
                 if (currentSelection == RequestSelection)
                     SynchronousUpdate(currentSelection, wordSpan, CurrentWordForCheck);
@@ -779,6 +783,7 @@ namespace SimilarHighlight
                     // Make the similar element highlighted.
                     selected.MoveToAbsoluteOffset(newStartOffset, false);
                     selected.MoveToAbsoluteOffset(newStartOffset + newSpan.Length, true);
+                    //IsChecked = true;
                     // Set the new element.
                     RightMarginFactory.rightMargin.rightMarginElement.SetCurrentPoint(newSpan.Start);
                 }

@@ -23,14 +23,14 @@ namespace SimilarHighlight
     [Export(typeof(EditorOptionDefinition))]
     internal sealed class CaretColor : EditorOptionDefinition<Color>
     {
-        public override Color Default { get { return Colors.Black; } }//Colors.MediumBlue
+        public override Color Default { get { return Colors.Red; } }
         public override EditorOptionKey<Color> Key { get { return RightMarginElement.CaretColorId; } }
     }
 
     [Export(typeof(EditorOptionDefinition))]
     internal sealed class MatchColor : EditorOptionDefinition<Color>
     {
-        public override Color Default { get { return Colors.MediumPurple; } }
+        public override Color Default { get { return Colors.Blue; } }
         public override EditorOptionKey<Color> Key { get { return RightMarginElement.MatchColorId; } }
     }
 
@@ -61,16 +61,13 @@ namespace SimilarHighlight
         private Brush matchBrush;
         private SnapshotPoint currentPoint;
 
-        private bool hasEvents = false;
-
         double MarkPadding = 1.0;
         double MarkThickness = 4.0;
 
-        public static readonly EditorOptionKey<bool> EnabledOptionId = new EditorOptionKey<bool>("RightMargin/Enabled");
-        public static readonly EditorOptionKey<Color> CaretColorId = new EditorOptionKey<Color>("RightMargin/CaretColor");
-        public static readonly EditorOptionKey<Color> MatchColorId = new EditorOptionKey<Color>("RightMargin/MatchColor");
-        public static readonly EditorOptionKey<double> MarginWidthId = new EditorOptionKey<double>("RightMargin/MarginWidth");
-        public static readonly string CaretMarginRoot = "RightMargin/CaretMarginRoot";
+        public static readonly EditorOptionKey<bool> EnabledOptionId = new EditorOptionKey<bool>("SimilarM/Enabled");
+        public static readonly EditorOptionKey<Color> CaretColorId = new EditorOptionKey<Color>("SimilarM/CaretColor");
+        public static readonly EditorOptionKey<Color> MatchColorId = new EditorOptionKey<Color>("SimilarM/MatchColor");
+        public static readonly EditorOptionKey<double> MarginWidthId = new EditorOptionKey<double>("SimilarM/MarginWidth");
 
         /// <summary>
         /// Constructor for the CaretMarginElement.
@@ -147,7 +144,7 @@ namespace SimilarHighlight
         {
             base.OnRender(drawingContext);
 
-            if (HLTextTagger.NewSpanAll != null && HLTextTagger.NewSpanAll.Count > 0)
+            if (HLTextTagger.NewSpanAll != null && HLTextTagger.NewSpanAll.Count > 0) //&& HLTextTagger.IsChecked == true
             {
                 //There is a word that should be highlighted. It doesn't matter whether or not the search has completed or
                 //is still in progress: draw red marks for each match found so far (the completion callback on the search
@@ -171,7 +168,7 @@ namespace SimilarHighlight
                         //Translate the match from its snapshot to the view's current snapshot (the versions should be the same,
                         //but this will handle it if -- for some reason -- they are not).
                         double y = this.scrollBar.GetYCoordinateOfBufferPosition(match.TranslateTo(this.textView.TextSnapshot, PointTrackingMode.Negative));
-                        MarkThickness = this.ActualHeight / match.Snapshot.LineCount;
+                        MarkThickness = this.ActualHeight / (match.Snapshot.LineCount + HLTextTagger.PaneLineCnt + 1);
                         //if (y + MarkThickness > lastY)
                         //{
                         //    lastY = y;

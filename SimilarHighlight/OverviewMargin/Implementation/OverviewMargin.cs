@@ -77,7 +77,7 @@ namespace SimilarHighlight.OverviewMargin.Implementation
             _offScreenBrush = this.GetBrush(OverviewMargin.OffScreenColorId);
             _visibleBrush = this.GetBrush(OverviewMargin.VisibleColorId);
 
-            base.Background = Brushes.AliceBlue;
+            base.Background = Brushes.Transparent;
             base.ClipToBounds = true;
 
             {
