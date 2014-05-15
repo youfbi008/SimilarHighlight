@@ -16,6 +16,9 @@ using EnvDTE80;
 using System.Diagnostics;
 using SimilarHighlight.OutputWindow;
 using SimilarHighlight.ContainerMargin;
+using Microsoft.VisualStudio.Shell.Interop;
+using System.Runtime.InteropServices;
+using SimilarHighlight.Option;
 
 namespace SimilarHighlight
 {
@@ -38,9 +41,18 @@ namespace SimilarHighlight
 
         private IWpfTextViewMarginProvider similarMarginFactory { get; set; }
         private IOutputWindowPane outputWindow { get; set; }
+        private OptionPage optionPage { get; set; }
         
         public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
         {
+            if (optionPage == null)
+            {
+                var shell = (IVsShell)ServiceProvider.GetService(typeof(SVsShell));
+                IVsPackage package;
+                Marshal.ThrowExceptionForHR(shell.LoadPackage(GuidList.guidSimilarOptionCmdSet, out package));
+
+                optionPage = ((SimilarOptionPackage)package).GetOptionPage();
+            }
             //provide highlighting only on the top buffer
             if (textView.TextBuffer != buffer)
                 return null;
@@ -85,7 +97,7 @@ namespace SimilarHighlight
                 outputWindow = OutputWindowService.TryGetPane("Similar");
             }
 
-            return new HLTextTagger(textView as IWpfTextView, buffer, nowDocument, outputWindow, similarMarginFactory) as ITagger<T>;
+            return new HLTextTagger(textView as IWpfTextView, buffer, nowDocument, outputWindow, similarMarginFactory, optionPage) as ITagger<T>;
         }
     }
 }

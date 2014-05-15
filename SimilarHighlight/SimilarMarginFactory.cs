@@ -8,7 +8,6 @@ using SimilarHighlight.ContainerwMargin;
 namespace SimilarHighlight
 {
     [Export(typeof(IWpfTextViewMarginProvider))]
-    
     [Name(SimilarMargin.Name)]
     [MarginContainer(PredefinedContainerMargin.Container)]
     [ContentType("text")]

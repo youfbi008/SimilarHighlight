@@ -16,6 +16,6 @@ namespace SimilarHighlight
 {
     internal class HLTextTag : TextMarkerTag
     {
-        public HLTextTag() : base("MarkerFormatDefinition/HLTextFormatDefinition") { }
+        public HLTextTag() : base("MarkerFormatDefinition/HLTextFormatDefinition") {}
     }
 }

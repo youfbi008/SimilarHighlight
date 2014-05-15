@@ -28,7 +28,7 @@ using Code2Xml.Core.Generators;
 using SimilarHighlight.OutputWindow;
 using SimilarHighlight.ContainerMargin;
 using System.Windows.Threading;
-
+using SimilarHighlight.Option;
 
 namespace SimilarHighlight
 {
@@ -45,6 +45,7 @@ namespace SimilarHighlight
         public static IList<SnapshotSpan> NewSpanAll = new List<SnapshotSpan>();
         public static bool IsChecked = false;
         public static int PaneLineCnt { get; set; }
+        public static OptionPage OptionPage { get; set; }
 
         #region Private Members
         private static SimilarMarginFactory SimilarMarginFactory;
@@ -111,7 +112,7 @@ namespace SimilarHighlight
         #endregion
 
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, EnvDTE.Document document,
-            IOutputWindowPane outputWindow, IWpfTextViewMarginProvider similarMarginFactory)
+            IOutputWindowPane outputWindow, IWpfTextViewMarginProvider similarMarginFactory, OptionPage optionPage)
         {
             try
             {
@@ -179,6 +180,7 @@ namespace SimilarHighlight
                         this.TmpWordSpans = new NormalizedSnapshotSpanCollection();
                         this.CurrentWord = null;
                         this.OutputWindow = outputWindow;
+                        OptionPage = optionPage;
                         //        TokenElements = RootElement.Descendants("TOKEN").ToList();
                     }
                 }
@@ -231,6 +233,7 @@ namespace SimilarHighlight
                     var tempEvent = TagsChanged;
                     if (tempEvent != null)
                     {
+                        Locations.Clear();
                         // Refresh the text of the current editor window.
                         tempEvent(this, new SnapshotSpanEventArgs(new SnapshotSpan(
                             SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
@@ -255,6 +258,8 @@ namespace SimilarHighlight
 
         void VisualElement_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            if (OptionPage.Enabled == false) return;
+
             if (e.ClickCount == 2)
             {
                 RequestSelection = Document.Selection;
@@ -269,9 +274,8 @@ namespace SimilarHighlight
                 //IsChecked = true;
                 SimilarMarginFactory.similarMargin.similarMarginElement.SetCurrentPoint(
                     ConvertToPosition(RequestSelection.TopPoint));
-                OutputMsg("Selection: " + (++selectionNo) + ", Line: " + RequestSelection.TopPoint.Line + ", Range: (" + 
-                    RequestSelection.TopPoint.LineCharOffset + ", " + RequestSelection.BottomPoint.LineCharOffset + "), Code: " +
-                    RequestSelection.Text.Trim());
+                // Output the selection logs.
+                OutputSelectionLogs(selectionNo, RequestSelection);
                 // Highlight by background thread.
                 ThreadStartHighlighting();
             }
@@ -454,7 +458,7 @@ namespace SimilarHighlight
                 }
                 CurrentSelectNum = 0;
                 highlightNo++;
-                OutputMsg("=================================Start:" + highlightNo + "==============================");
+                OutputGeneralMsg("=================================Start:" + highlightNo + "==============================");
 
                 Parallel.ForEach(ret, tuple =>
                 {
@@ -466,7 +470,7 @@ namespace SimilarHighlight
                 });
 
                 TimeWatch.Stop("BuildSimilarElementsCollection");
-                OutputMsg("==================================End:" + highlightNo + "===============================");
+                OutputGeneralMsg("==================================End:" + highlightNo + "===============================");
                 if (NewSpanAll.Count == 0)
                 {
                     return;
@@ -640,20 +644,35 @@ namespace SimilarHighlight
             }
         }
 
+        private void OutputSelectionLogs(int selectionNo, TextSelection textSelection)
+        {
+            if (OutputWindow != null)
+            {
+                OutputMsg("Selection: " + (++selectionNo) + ", Line: " + textSelection.TopPoint.Line + ", Range: (" +
+                    textSelection.TopPoint.LineCharOffset + ", " + textSelection.BottomPoint.LineCharOffset + "), Code: " +
+                    textSelection.Text.Trim());
+            }
+        }
+
         private void OutputSimilarElementLogs(int score, string strMsg, int line, int start, int end)
         {
             if (OutputWindow != null)
             {
-                OutputWindow.WriteLine("Line: " + line + ", Range: (" + start + ", " + end + "), " +
+                OutputMsg("Line: " + line + ", Range: (" + start + ", " + end + "), " +
                     "Similarity: " + score + ", Code: " + strMsg);
             }
         }
 
-        private void OutputMsg(string strMsg) {
+        private void OutputGeneralMsg(string strMsg)
+        {
             if (OutputWindow != null)
             {
-                OutputWindow.WriteLine(strMsg);
+                OutputMsg(strMsg);
             }
+        }
+
+        private void OutputMsg(string strMsg) {
+            OutputWindow.WriteLine(strMsg);
         }
 
         void SynchronousUpdate(TextSelection CurrentSelection, NormalizedSnapshotSpanCollection newSpans, 
