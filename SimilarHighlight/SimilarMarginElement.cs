@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Threading;
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Formatting;
 using SimilarHighlight.ContainerMargin;
 using System.Diagnostics;
+using System.Windows.Media;
 
 namespace SimilarHighlight
 {
@@ -18,20 +18,6 @@ namespace SimilarHighlight
     {
         public override bool Default { get { return true; } }
         public override EditorOptionKey<bool> Key { get { return SimilarMarginElement.EnabledOptionId; } }
-    }
-
-    [Export(typeof(EditorOptionDefinition))]
-    internal sealed class CaretColor : EditorOptionDefinition<Color>
-    {
-        public override Color Default { get { return Colors.Red; } }
-        public override EditorOptionKey<Color> Key { get { return SimilarMarginElement.CaretColorId; } }
-    }
-
-    [Export(typeof(EditorOptionDefinition))]
-    internal sealed class MatchColor : EditorOptionDefinition<Color>
-    {
-        public override Color Default { get { return Colors.Blue; } }
-        public override EditorOptionKey<Color> Key { get { return SimilarMarginElement.MatchColorId; } }
     }
 
     [Export(typeof(EditorOptionDefinition))]
@@ -55,6 +41,8 @@ namespace SimilarHighlight
         private readonly IWpfTextView textView;
         private readonly IVerticalScrollBar scrollBar;
 
+        private string caretColorName;
+        private string matchColorName;
         private Brush caretBrush;
         private Brush matchBrush;
         private SnapshotPoint currentPoint;
@@ -63,8 +51,6 @@ namespace SimilarHighlight
         double MarkThickness = 4.0;
 
         public static readonly EditorOptionKey<bool> EnabledOptionId = new EditorOptionKey<bool>("SimilarM/Enabled");
-        public static readonly EditorOptionKey<Color> CaretColorId = new EditorOptionKey<Color>("SimilarM/CaretColor");
-        public static readonly EditorOptionKey<Color> MatchColorId = new EditorOptionKey<Color>("SimilarM/MatchColor");
         public static readonly EditorOptionKey<double> MarginWidthId = new EditorOptionKey<double>("SimilarM/MarginWidth");
 
         /// <summary>
@@ -79,8 +65,6 @@ namespace SimilarHighlight
             this.textView = textView;
 
             factory.LoadOption(textView.Options, SimilarMarginElement.EnabledOptionId.Name);
-            factory.LoadOption(textView.Options, SimilarMarginElement.CaretColorId.Name);
-            factory.LoadOption(textView.Options, SimilarMarginElement.MatchColorId.Name);
             factory.LoadOption(textView.Options, SimilarMarginElement.MarginWidthId.Name);
 
             this.scrollBar = verticalScrollbar;
@@ -89,8 +73,10 @@ namespace SimilarHighlight
             //real-estate.
             this.Width = textView.Options.GetOptionValue(SimilarMarginElement.MarginWidthId);
 
-            this.caretBrush = GetBrush(SimilarMarginElement.CaretColorId);
-            this.matchBrush = GetBrush(SimilarMarginElement.MatchColorId);
+            caretColorName = HLTextTagger.OptionPage.CaretColor.Name;
+            matchColorName = HLTextTagger.OptionPage.MatchColor.Name;
+            this.caretBrush = GetBrush(caretColorName, Colors.Red);
+            this.matchBrush = GetBrush(matchColorName, Colors.Blue);
 
             this.textView.Closed += OnClosed;
         }
@@ -106,17 +92,22 @@ namespace SimilarHighlight
             this.InvalidateVisual();
         }
 
-        private Brush GetBrush(EditorOptionKey<Color> key)
+        private Brush GetBrush(string colorName, Color defColor)
         {
             Brush brush = null;
-
-            Color color = this.textView.Options.GetOptionValue(key);
-            if (color.A != 0)
+            try
             {
-                brush = new SolidColorBrush(color);
+                if (colorName != "")
+                {
+                    brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorName));
+                    brush.Freeze();
+                }
+            }
+            catch (Exception exc) {
+                HLTextTagger.OutputMsg("The setting of Color is invalid.");
+                brush = new SolidColorBrush(defColor);
                 brush.Freeze();
             }
-
             return brush;
         }
 
@@ -150,6 +141,11 @@ namespace SimilarHighlight
                 //Take a snapshot of the matches found to date (this could still be changing
                 //if the search has not completed yet).
                 IList<SnapshotSpan> matches = HLTextTagger.NewSpanAll;
+                if (matchColorName != HLTextTagger.OptionPage.MatchColor.Name)
+                {
+                    matchColorName = HLTextTagger.OptionPage.MatchColor.Name;
+                    this.matchBrush = GetBrush(matchColorName, Colors.Blue);
+                }
 
                 try
                 {
@@ -177,6 +173,11 @@ namespace SimilarHighlight
 
             if (this.caretBrush != null && this.currentPoint.Position != 0)
             {
+                if (caretColorName != HLTextTagger.OptionPage.CaretColor.Name)
+                {
+                    caretColorName = HLTextTagger.OptionPage.CaretColor.Name;
+                    this.caretBrush = GetBrush(caretColorName, Colors.Red);
+                }
                 //Draw a blue mark at the caret's location (on top of the mark at the caret's location).
                 this.DrawMark(drawingContext, this.caretBrush, this.scrollBar.GetYCoordinateOfBufferPosition(currentPoint));
             }

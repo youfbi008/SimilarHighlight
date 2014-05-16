@@ -10,14 +10,20 @@ using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Operations;
 using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Utilities;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+using SimilarHighlight.Option;
+using System.Runtime.InteropServices;
 
 namespace SimilarHighlight
 {
     [Export(typeof(EditorFormatDefinition))]
-    [Name("MarkerFormatDefinition/HLTextFormatDefinition")]
+    [Name(HLTextFormatDefinition.FormatName)]
     [UserVisible(true)]
     internal class HLTextFormatDefinition : MarkerFormatDefinition
     {
+        public const string FormatName = "MarkerFormatDefinition/HLTextFormatDefinition";
+
         public HLTextFormatDefinition()
         {
             this.BackgroundColor = Colors.LightGreen;
@@ -25,6 +31,5 @@ namespace SimilarHighlight
             this.DisplayName = "Highlight Word";
             this.ZOrder = 5;
         }
-
     }
 }

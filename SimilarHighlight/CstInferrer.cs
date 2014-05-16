@@ -33,8 +33,6 @@ namespace SimilarHighlight
 {
     public static class CstInferrer
     {
-        // similarity range
-        public static int SimilarityRange { get; set; }
 
         private static int keysCount { get; set; }
 
@@ -230,16 +228,23 @@ namespace SimilarHighlight
                 //}
                 TimeWatch.Stop("FindOutCandidateElements");
 
+                
                 // Get the similarity range.
-                if (SimilarityRange == 0 && keysCount != 0)
+                if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.High)
                 {
-                    // TODO The better algorithm is expected.
-                    similarityRange = keysCount / 4;
+                    similarityRange = keysCount / (int)Option.OptionPage.SimilarityType.High;
+                }
+                else if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.Stardard)
+                {
+                    similarityRange = keysCount / (int)Option.OptionPage.SimilarityType.Stardard;
+                }
+                else if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.Low)
+                {
+                    similarityRange = keysCount / (int)Option.OptionPage.SimilarityType.Low;
                 }
                 else
                 {
-                    // If the similarity is setted.
-                    similarityRange = SimilarityRange;
+                    similarityRange = keysCount / 4;
                 }
 
                 int minSimilarity = 0;

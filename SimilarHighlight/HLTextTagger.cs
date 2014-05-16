@@ -106,13 +106,14 @@ namespace SimilarHighlight
         private bool isStrict { get; set; }
         // CST : 0;  AST : 1;
         private int treeType = 0;
-        private IOutputWindowPane OutputWindow;
+        private static IOutputWindowPane OutputWindow;
         private int selectionNo { get; set; }
         private int highlightNo { get; set; }
         #endregion
 
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, EnvDTE.Document document,
-            IOutputWindowPane outputWindow, IWpfTextViewMarginProvider similarMarginFactory, OptionPage optionPage)
+            IOutputWindowPane outputWindow, IWpfTextViewMarginProvider similarMarginFactory,
+            OptionPage optionPage, IEditorFormatMap format)
         {
             try
             {
@@ -169,19 +170,23 @@ namespace SimilarHighlight
                         // the backward offset when fixing
                         endOffset = 1;
 
-                        Locations = new List<LocationInfo>();
+                        this.Locations = new List<LocationInfo>();
                         this.CntLeftClick = 0;
-                        View = view;
-                        View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;
-                        View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
-                        View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
+                        
                         this.SourceBuffer = sourceBuffer;
                         this.WordSpans = new NormalizedSnapshotSpanCollection();
                         this.TmpWordSpans = new NormalizedSnapshotSpanCollection();
                         this.CurrentWord = null;
-                        this.OutputWindow = outputWindow;
+                        
+                        OutputWindow = outputWindow;
                         OptionPage = optionPage;
+                        View = view;
+                        View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;
+                        View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
+                        View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
                         //        TokenElements = RootElement.Descendants("TOKEN").ToList();
+
+                        FireTagsChanged();
                     }
                 }
             }
@@ -190,6 +195,17 @@ namespace SimilarHighlight
                 Debug.Write(exc.ToString());
             }
         }
+
+        private void FireTagsChanged()
+        {
+            if (TagsChanged != null)
+            {
+                var snapshot = View.TextSnapshot;
+                TagsChanged(this, new SnapshotSpanEventArgs(new SnapshotSpan(snapshot, 0, snapshot.Length)));
+            }
+        }
+
+       
 
         void VisualElement_PreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -671,7 +687,7 @@ namespace SimilarHighlight
             }
         }
 
-        private void OutputMsg(string strMsg) {
+        public static void OutputMsg(string strMsg) {
             OutputWindow.WriteLine(strMsg);
         }
 

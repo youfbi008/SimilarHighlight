@@ -20,29 +20,28 @@ namespace SimilarHighlight.Option
 
         [Category("Highlight Settings")]
         [DisplayName("Enabled")]
-        [Description("Enable the Similarhighlight")]
+        [Description("Enable the tool.")]
         public bool Enabled
         {
             get { return enabled; }
             set { enabled = value; }
         }
-   //     int[] myIntArray = 
-        private SimilarityType similarityRange = SimilarityType.High;
+
+        private SimilarityType similarityLevel = SimilarityType.High;
         public enum SimilarityType
         {
-            VeryHigh = 5,
-            High = 10,
-            Low = 20
+            High = 6,
+            Stardard = 5,
+            Low = 4
         }
 
         [Category("Highlight Settings")]
-        [DisplayName("SimilarityRange")]
-        [Description("Similarity Threshold")]
-       // [Editor(typeof(CollectionEditor), typeof(UITypeEditor))]
-        public SimilarityType SimilarityRange
+        [DisplayName("SimilarityLevel")]
+        [Description("Set the similarity Level.")]
+        public SimilarityType SimilarityLevel
         {
-            get { return similarityRange; }
-            set { similarityRange = value; }
+            get { return similarityLevel; }
+            set { similarityLevel = value; }
         }
 
         private Color backgroundColor = Color.LightGreen;
