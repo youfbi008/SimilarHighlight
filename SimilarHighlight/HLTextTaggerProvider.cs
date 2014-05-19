@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Windows.Media;
 using Microsoft.VisualStudio.Shell;
@@ -46,7 +47,9 @@ namespace SimilarHighlight
         private IWpfTextViewMarginProvider similarMarginFactory { get; set; }
         private IOutputWindowPane outputWindow { get; set; }
         private OptionPage optionPage { get; set; }
-        
+
+        public ITagger<ITag> HLTextTaggerElement;
+
         public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
         {
             if (optionPage == null)
@@ -67,7 +70,7 @@ namespace SimilarHighlight
 
             TextDocumentFactoryService.TryGetTextDocument(buffer, out textDocument);
             DTE dte = (DTE)ServiceProvider.GetService(typeof(DTE));
-
+            
             if (dte == null)
                 Trace.WriteLine("did not get dte reference");
             else
@@ -82,10 +85,14 @@ namespace SimilarHighlight
                         break;
                     }
                 }
+
+                if (nowDocument == null) {
+                    return null;
+                }
             }
 
             // A margin factory to add a right marigin which mark highlighted elements' points.
-            if (similarMarginFactory == null)
+            if (similarMarginFactory == null && optionPage.MarginEnabled)
             {
                 foreach (var marginProvider in marginProviders)
                 {
@@ -97,51 +104,51 @@ namespace SimilarHighlight
             }
 
             // A output pane named "Similar" will be added to display some information.
-            if (outputWindow == null)
+            if (outputWindow == null && optionPage.OutputEnabled)
             {
                 outputWindow = OutputWindowService.TryGetPane("Similar");
             }
 
             var format = FormatMapService.GetEditorFormatMap(textView);
-            format.BeginBatchUpdate();
+            //format.BeginBatchUpdate();
 
-            ResourceDictionary properties = format.GetProperties(HLTextFormatDefinition.FormatName);
+            //ResourceDictionary properties = format.GetProperties(HLTextFormatDefinition.FormatName);
 
             //Color forecolor = Utils.CreateColor(_view.Options.GetOptionValue(OptionsKeys.TextMarkerForegroundColor));
             //Color backcolor = Utils.CreateColor(_view.Options.GetOptionValue(OptionsKeys.TextMarkerBackgroundColor));
        //     EditorFormatDefinition.BackgroundColorId
-            properties[EditorFormatDefinition.ForegroundBrushId] = GetBrush(optionPage.ForegroundColor.Name, Colors.DarkBlue);
-            properties[EditorFormatDefinition.BackgroundBrushId] = GetBrush(optionPage.BackgroundColor.Name, Colors.LightGreen);
-            properties[EditorFormatDefinition.ForegroundColorId] = optionPage.ForegroundColor;
-            properties[EditorFormatDefinition.BackgroundColorId] = optionPage.BackgroundColor;
+            //properties[EditorFormatDefinition.ForegroundBrushId] = GetBrush(optionPage.ForegroundColor.Name, Colors.DarkBlue);
+            //properties[EditorFormatDefinition.BackgroundBrushId] = GetBrush(optionPage.BackgroundColor.Name, Colors.LightGreen);
+            //properties[EditorFormatDefinition.ForegroundColorId] = optionPage.ForegroundColor;
+            //properties[EditorFormatDefinition.BackgroundColorId] = optionPage.BackgroundColor;
 
-            format.EndBatchUpdate();
+            //format.EndBatchUpdate();
           //  FireTagsChanged();
 
             return new HLTextTagger(textView as IWpfTextView, buffer, nowDocument, outputWindow, similarMarginFactory, optionPage, format) as ITagger<T>;
         }
 
-        
-
-
-        private Brush GetBrush(string colorName, Color defColor)
-        {
-            Brush brush = null;
-            try
-            {
-                if (colorName != "")
-                {
-                    brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorName));
-                    brush.Freeze();
-                }
-            }
-            catch (Exception exc)
-            {
-                HLTextTagger.OutputMsg("The setting of CaretColor is invalid.");
-                brush = new SolidColorBrush(defColor);
-                brush.Freeze();
-            }
-            return brush;
-        }
+        //private Brush GetBrush(string colorName, Color defColor)
+        //{
+        //    Brush brush = null;
+        //    try
+        //    {
+        //        if (colorName != "")
+        //        {
+        //            brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorName));
+        //            brush.Freeze();
+        //        }
+        //    }
+        //    catch (Exception exc)
+        //    {
+        //        if (outputWindow != null)
+        //        {
+        //            outputWindow.WriteLine("The setting of CaretColor is invalid.");
+        //        }
+        //        brush = new SolidColorBrush(defColor);
+        //        brush.Freeze();
+        //    }
+        //    return brush;
+        //}
     }
 }

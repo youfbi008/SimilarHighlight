@@ -34,22 +34,22 @@ namespace SimilarHighlight
     public static class InferrerSelector
     {
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, XElement root, bool isStrict, int treeType)
+                IEnumerable<LocationInfo> locations, XElement root, int treeType)
         {
             try
             {
                 if (treeType == 0) {
                     return CstInferrer.GetSimilarElements(locations,
-                            root, isStrict);
+                            root);
                 }
                 else if (treeType == 1) {
                     return AstInferrer.GetSimilarElements(locations,
-                            root, isStrict);
+                            root);
                 }
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                HLTextTagger.OutputMsgForExc(exc.ToString());
             }
             return null;
         }

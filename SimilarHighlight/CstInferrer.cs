@@ -191,7 +191,7 @@ namespace SimilarHighlight
         }
 
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, XElement root, bool isStrict,
+                IEnumerable<LocationInfo> locations, XElement root,
                 int range = 5, bool inner = true, bool outer = true)
         {
             try
@@ -232,7 +232,7 @@ namespace SimilarHighlight
                 // Get the similarity range.
                 if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.High)
                 {
-                    similarityRange = keysCount / (int)Option.OptionPage.SimilarityType.High;
+                    similarityRange = 0;//keysCount / (int)Option.OptionPage.SimilarityType.High
                 }
                 else if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.Stardard)
                 {
@@ -248,7 +248,7 @@ namespace SimilarHighlight
                 }
 
                 int minSimilarity = 0;
-                if (isStrict)
+                if (similarityRange > 0)
                 {
                     // If the similarity is too small. 
                     if (commonKeys.Count <= similarityRange)
@@ -261,13 +261,34 @@ namespace SimilarHighlight
                 }
                 else
                 {
-                    minSimilarity = commonKeys.Count * 2 / 3;
+                    minSimilarity = commonKeys.Count;
+
+                    var rangeTest = new List<IEnumerable<CstNode>>();
+                    rangeTest.Add(candidates[0].Take(3).ToList());
+                    if (rangeTest.GetSimilars(commonKeys, minSimilarity).Count() == 0) {
+                        minSimilarity = minSimilarity - 2;
+                    }
                 }
 
                 TimeWatch.Start();
 
                 // Get the similar nodes collection. 
-                var ret = candidates.AsParallel().SelectMany(
+                var ret = candidates.GetSimilars(commonKeys, minSimilarity);
+
+                TimeWatch.Stop("FindOutSimilarElements");
+                return ret;
+            }
+            catch (Exception exc)
+            {
+                HLTextTagger.OutputMsgForExc(exc.ToString());
+            }
+            return null;
+        }
+
+        private static IEnumerable<Tuple<int, CodeRange>> GetSimilars(this List<IEnumerable<CstNode>> candidates,
+            HashSet<string> commonKeys, int minSimilarity, int range = 5, bool inner = true, bool outer = true)
+        {
+             return candidates.AsParallel().SelectMany(
                         kv =>
                         {
                             return kv.Select(
@@ -278,7 +299,7 @@ namespace SimilarHighlight
                                             e))
                                 // The candidate node will be taken as similar node 
                                 // when the number of common surrounding nodes is bigger than the similarity threshold.
-                                     .Where(e => e.Item1 > minSimilarity
+                                     .Where(e => e.Item1 >= minSimilarity
                                      )
                                      .Select(
                                             t => Tuple.Create(
@@ -288,15 +309,6 @@ namespace SimilarHighlight
                         })
                         // Sort candidate nodes using the similarities
                         .OrderByDescending(t => t.Item1).ToList();
-
-                TimeWatch.Stop("FindOutSimilarElements");
-                return ret;
-            }
-            catch (Exception exc)
-            {
-                Debug.Write(exc.ToString());
-            }
-            return null;
         }
     }
 }

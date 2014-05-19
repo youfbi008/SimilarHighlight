@@ -13,6 +13,7 @@ using Microsoft.VisualStudio.Text.Outlining;
 using Microsoft.VisualStudio.Text.Projection;
 using Microsoft.VisualStudio.Utilities;
 using SimilarHighlight.ContainerwMargin;
+using DColor = System.Drawing.Color;
 
 namespace SimilarHighlight.ContainerMargin
 {
@@ -27,18 +28,17 @@ namespace SimilarHighlight.ContainerMargin
         const double VerticalPadding = 1.0;
         const double MinViewportHeight = 5.0; // smallest that viewport extent will be drawn
 
-        private Brush _offScreenBrush; // background for document areas outside of viewport extent
-        private Brush _visibleBrush; // background for document areas inside of viewport extent
+        private Brush backScreenBrush;
+        private Brush scollBrush;
 
         private readonly IOutliningManager _outliningManager;
 
         private SimpleScrollBar _scrollBar;
 
         private ContainerMarginProvider _provider;
-        private SimilarMarginFactory SimilarMarginFactory;
-        private string offScreenColorName;
-        private string visibleColorName;
-
+        private DColor backScreenColor;
+        private DColor scollColor;
+        private SimilarMarginElement MarginElement { get; set; }
         /// <summary>
         /// Constructor for the ContainerMargin.
         /// </summary>
@@ -47,16 +47,16 @@ namespace SimilarHighlight.ContainerMargin
             : base(PredefinedContainerMargin.Container, Orientation.Vertical, textViewHost, myProvider.OrderedMarginProviders)
         {
             _provider = myProvider;
-            SimilarMarginFactory = this.similarMarginFactory as SimilarMarginFactory;
+       //     SimilarMarginFactory = this.similarMarginFactory as SimilarMarginFactory;
 
             _outliningManager = myProvider.OutliningManagerService.GetOutliningManager(textViewHost.TextView);
 
             _scrollBar = new SimpleScrollBar(textViewHost, containerMargin, myProvider._scrollMapFactory, this, false);
 
-            offScreenColorName = HLTextTagger.OptionPage.OffScreenColor.Name;
-            visibleColorName = HLTextTagger.OptionPage.VisibleColor.Name;
-            this._offScreenBrush = GetBrush(offScreenColorName, Colors.Red);
-            this._visibleBrush = GetBrush(visibleColorName, Colors.Blue);
+            backScreenColor = HLTextTagger.OptionPage.BackScreenColor;
+            scollColor = HLTextTagger.OptionPage.ScrollColor;
+            this.backScreenBrush = GetBrush(backScreenColor, Color.FromArgb(0x30, 0x00, 0x00, 0x00));
+            this.scollBrush = GetBrush(scollColor, Color.FromArgb(0x00, 0xff, 0xff, 0xff));
 
             base.Background = Brushes.Transparent;
             base.ClipToBounds = true;
@@ -68,22 +68,20 @@ namespace SimilarHighlight.ContainerMargin
 //            base.TextViewHost.TextView.Options.OptionChanged += this.OnOptionsChanged;
         }
 
-        private Brush GetBrush(string colorName, Color defColor)
+        private Brush GetBrush(DColor color, Color defColor)
         {
             Brush brush = null;
             try
             {
-                if (colorName != "")
-                {
-                    brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorName));
-                    brush.Freeze();
-                }
+                brush = new SolidColorBrush(Color.FromArgb(color.A, color.R, color.G, color.B));
+                brush.Freeze();
             }
             catch (Exception exc)
             {
-                HLTextTagger.OutputMsg("The setting of Color is invalid.");
+                color = DColor.FromArgb(defColor.A, defColor.R, defColor.G, defColor.B);
                 brush = new SolidColorBrush(defColor);
                 brush.Freeze();
+                HLTextTagger.OutputMsgForExc(exc.ToString());
             }
             return brush;
         }
@@ -107,7 +105,7 @@ namespace SimilarHighlight.ContainerMargin
         {
             ContainerMargin margin = new ContainerMargin(textViewHost, containerMargin, myProvider);
             margin.Initialize();
-
+            
             return margin;
         }
 
@@ -126,6 +124,8 @@ namespace SimilarHighlight.ContainerMargin
         protected override void RegisterEvents()
         {
             base.RegisterEvents();
+            if (MarginElement == null)
+                MarginElement = base.SimilarMargin.similarMarginElement;
 
             base.TextViewHost.TextView.LayoutChanged += OnLayoutChanged;
             _scrollBar.TrackSpanChanged += OnTrackSpanChanged;
@@ -135,6 +135,17 @@ namespace SimilarHighlight.ContainerMargin
             this.MouseMove += OnMouseMove;
             this.MouseLeftButtonUp += OnMouseLeftButtonUp;
 
+            if (this.backScreenColor != HLTextTagger.OptionPage.BackScreenColor)
+            {
+                backScreenColor = HLTextTagger.OptionPage.BackScreenColor;
+                backScreenBrush = GetBrush(backScreenColor, Color.FromArgb(0x30, 0x00, 0x00, 0x00));
+            }
+
+            if (this.scollColor != HLTextTagger.OptionPage.ScrollColor)
+            {
+                scollColor = HLTextTagger.OptionPage.ScrollColor;
+                scollBrush = GetBrush(scollColor, Color.FromArgb(0x00, 0xff, 0xff, 0xff));
+            }
         }
 
         protected override void UnregisterEvents()
@@ -162,16 +173,6 @@ namespace SimilarHighlight.ContainerMargin
             this.InvalidateVisual();
         }
 
-        //protected void OnOptionsChanged(object sender, EditorOptionChangedEventArgs e)
-        //{
-        //    // Note there is NOT an option for ContainerMarginEnabled.  This is because if the container margin
-        //    // has no children, it is inactive.
-
-        //    var options = base.TextViewHost.TextView.Options;
-
-        //    // TODO: handle margin show/hide status -> (Un)RegisterEvents()
-        //}
-
         void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             this.CaptureMouse();
@@ -179,7 +180,7 @@ namespace SimilarHighlight.ContainerMargin
             Point pt = e.GetPosition(this);
             SnapshotPoint currentPoint = this.ScrollViewToYCoordinate(pt.Y, e.ClickCount == 2);
             // Set the current selection by selecting point from scroll margin.
-            HLTextTagger.SetCurrentScrollPointLine(currentPoint);
+            this.MarginElement.TextTaggerElement.SetCurrentScrollPointLine(currentPoint);
         }
 
         void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -273,22 +274,22 @@ namespace SimilarHighlight.ContainerMargin
             double viewportTop = Math.Floor(_scrollBar.GetYCoordinateOfBufferPosition(start));
             double viewportBottom = Math.Ceiling(Math.Max(GetYCoordinateOfLineBottom(tvl.LastVisibleLine), viewportTop + MinViewportHeight));
 
-            if (this.offScreenColorName != HLTextTagger.OptionPage.OffScreenColor.Name)
+            if (this.backScreenColor != HLTextTagger.OptionPage.BackScreenColor)
             {
-                offScreenColorName = HLTextTagger.OptionPage.OffScreenColor.Name;
-                _offScreenBrush = GetBrush(offScreenColorName, Color.FromArgb(0x30, 0x00, 0x00, 0x00));
+                backScreenColor = HLTextTagger.OptionPage.BackScreenColor;
+                backScreenBrush = GetBrush(backScreenColor, Color.FromArgb(0x30, 0x00, 0x00, 0x00));
             }
 
-            if (this.visibleColorName != HLTextTagger.OptionPage.VisibleColor.Name)
+            if (this.scollColor != HLTextTagger.OptionPage.ScrollColor)
             {
-                visibleColorName = HLTextTagger.OptionPage.VisibleColor.Name;
-                _visibleBrush = GetBrush(visibleColorName, Color.FromArgb(0x00, 0xff, 0xff, 0xff));
+                scollColor = HLTextTagger.OptionPage.ScrollColor;
+                scollBrush = GetBrush(scollColor, Color.FromArgb(0x00, 0xff, 0xff, 0xff));
             }
-            DrawRectangle(drawingContext, _offScreenBrush, this.ActualWidth, _scrollBar.TrackSpanTop, viewportTop);
+            DrawRectangle(drawingContext, backScreenBrush, this.ActualWidth, _scrollBar.TrackSpanTop, viewportTop);
 
-            DrawRectangle(drawingContext, _visibleBrush, this.ActualWidth, viewportTop, viewportBottom);
+            DrawRectangle(drawingContext, scollBrush, this.ActualWidth, viewportTop, viewportBottom);
 
-            DrawRectangle(drawingContext, _offScreenBrush, this.ActualWidth, viewportBottom, _scrollBar.TrackSpanBottom);
+            DrawRectangle(drawingContext, backScreenBrush, this.ActualWidth, viewportBottom, _scrollBar.TrackSpanBottom);
         }
 
         private static void DrawRectangle(DrawingContext drawingContext, Brush brush, double width, double yTop, double yBottom)

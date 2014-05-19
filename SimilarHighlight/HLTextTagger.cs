@@ -39,18 +39,17 @@ namespace SimilarHighlight
         public bool IsNeedFix;
     }
 
-    internal class HLTextTagger : ITagger<HLTextTag>
+    internal class HLTextTagger : ITagger<HLTextTag>, IDisposable
     {
         // the collecton of highlighted elements
         public static IList<SnapshotSpan> NewSpanAll = new List<SnapshotSpan>();
-        public static bool IsChecked = false;
         public static int PaneLineCnt { get; set; }
         public static OptionPage OptionPage { get; set; }
 
         #region Private Members
-        private static SimilarMarginFactory SimilarMarginFactory;
-        private static EnvDTE.Document Document { get; set; }
-        private static IWpfTextView View { get; set; }
+    //    private SimilarMarginFactory SimilarMarginFactory; //static
+        public  EnvDTE.Document Document { get; set; } //static
+        private IWpfTextView View { get; set; }//static
         // the order number of current selection in highlighted elements
         private static int CurrentSelectNum { get; set; }
         // the temp order number of current selection in highlighted elements
@@ -102,13 +101,15 @@ namespace SimilarHighlight
         private LocationInfo PreLocationInfo { get; set; }
         // Whether have the similar elements.
         private bool HaveSimilarElements = false;
-        // The strict similarity.
-        private bool isStrict { get; set; }
         // CST : 0;  AST : 1;
         private int treeType = 0;
         private static IOutputWindowPane OutputWindow;
-        private int selectionNo { get; set; }
+        private int SelectionNo { get; set; }
         private int highlightNo { get; set; }
+        public static string FileName { get; set; }
+        private bool m_disposed;
+
+        private SimilarMarginElement MarginElement { get; set; }
         #endregion
 
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, EnvDTE.Document document,
@@ -117,13 +118,11 @@ namespace SimilarHighlight
         {
             try
             {
-                SimilarMarginFactory = similarMarginFactory as SimilarMarginFactory;
+                MarginElement = null;
                 if (document == null)
                     return;
-
                 if (this.SyntaxTreeGenerator == null)
                 {
-                    this.isStrict = true;
                     hasSR = true;
                     switch (Path.GetExtension(document.FullName).ToUpper())
                     {
@@ -150,7 +149,6 @@ namespace SimilarHighlight
                             this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Ruby.Ruby18AstGenerator();
                             break;
                         case ".CBL":
-                            this.isStrict = false;
                             this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Cobol.Cobol85CstGenerator();
                             break;
                     }
@@ -181,18 +179,91 @@ namespace SimilarHighlight
                         OutputWindow = outputWindow;
                         OptionPage = optionPage;
                         View = view;
-                        View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;
-                        View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
-                        View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
-                        //        TokenElements = RootElement.Descendants("TOKEN").ToList();
+                        View.VisualElement.IsVisibleChanged += delegate(object sender, DependencyPropertyChangedEventArgs e)
+                        {
+                            if ((bool)e.NewValue)
+                            {
+                                FileName = document.ActiveWindow.Caption;
 
-                        FireTagsChanged();
+                                if (MarginElement == null)
+                                {
+                                    MarginElement = (similarMarginFactory as SimilarMarginFactory).similarMargin.similarMarginElement;
+                                    MarginElement.CurFileName = FileName;
+                                    MarginElement.TextTaggerElement = this;
+                                }
+                                
+                                //Hook up to the various events we need to keep the caret margin current.
+                                View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;
+                                View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
+                                View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
+                                //Force the margin to be rerendered since things might have changed while the margin was hidden.
+                                View.VisualElement.InvalidateVisual();
+                            }
+                            else
+                            {
+                                CurrentWord = null;
+                                WordSpans = new NormalizedSnapshotSpanCollection();
+                                TmpWordSpans = new NormalizedSnapshotSpanCollection();
+                                NewSpanAll.Clear();
+                                CurrentSelectNum = 0;
+                                var tempEvent = TagsChanged;
+                                if (tempEvent != null)
+                                {
+                                    Locations.Clear();
+                                    // Refresh the text of the current editor window.
+                                    tempEvent(this, new SnapshotSpanEventArgs(new SnapshotSpan(
+                                        SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
+                                }
+
+                                View.VisualElement.PreviewMouseLeftButtonUp -= VisualElement_PreviewMouseLeftButtonUp;
+                                View.VisualElement.PreviewKeyDown -= VisualElement_PreviewKeyDown;
+                                View.VisualElement.PreviewKeyUp -= VisualElement_PreviewKeyUp;
+                            }
+                        };
                     }
                 }
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
+            }
+        }
+
+        private void ViewLayoutChanged(object sender, TextViewLayoutChangedEventArgs e)
+        {
+            //foreach (var item in Document.Collection)
+            //{
+            //  var doc = item as EnvDTE.Document;
+            //  var name = doc.FullName;
+            //    //if (name == textDocument.FilePath)
+            //    //{
+            //    //    nowDocument = doc;
+            //    //    break;
+            //    //}
+            //}
+            // If a new snapshot wasn't generated, then skip this layout
+            if (e.NewViewState.EditSnapshot != e.OldViewState.EditSnapshot)
+            {
+          //      UpdateAtCaretPosition(View.Caret.Position);
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!this.m_disposed)
+            {
+                if (disposing)
+                {
+                    View = null;
+                }
+
+                m_disposed = true;
             }
         }
 
@@ -204,8 +275,6 @@ namespace SimilarHighlight
                 TagsChanged(this, new SnapshotSpanEventArgs(new SnapshotSpan(snapshot, 0, snapshot.Length)));
             }
         }
-
-       
 
         void VisualElement_PreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -222,11 +291,10 @@ namespace SimilarHighlight
         {
             if (Keyboard.IsKeyDown(Key.LeftCtrl) && Keyboard.IsKeyDown(Key.LeftAlt))
             {
-                if (TmpWordSpans.Count() == 0)
+                if (TmpWordSpans != null && TmpWordSpans.Count() == 0)
                 {
                     return;
                 }
-                PaneLineCnt = RequestSelection.TextPane.Height;
                 if (e.Key == Key.Left)
                 {
                     // Make the previous similar element highlighted.
@@ -253,9 +321,12 @@ namespace SimilarHighlight
                         // Refresh the text of the current editor window.
                         tempEvent(this, new SnapshotSpanEventArgs(new SnapshotSpan(
                             SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
-                        NewSpanAll.Clear();
-                        SimilarMarginFactory.similarMargin.similarMarginElement.SetCurrentPoint(
-                            View.TextSnapshot.GetLineFromLineNumber(0).Start);
+                        if (OptionPage.MarginEnabled)
+                        {
+                            NewSpanAll.Clear();
+                            MarginElement.SetCurrentPoint(
+                                View.TextSnapshot.GetLineFromLineNumber(0).Start);
+                        }
                     }
                 }
             }
@@ -272,6 +343,10 @@ namespace SimilarHighlight
             }
         }
 
+        //public static void SetMargin(SimilarMarginElement marginElement) {
+        //    MarginElement = marginElement;
+        //}
+
         void VisualElement_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (OptionPage.Enabled == false) return;
@@ -287,11 +362,14 @@ namespace SimilarHighlight
 
             if (RequestSelection.Text.Trim() != "")
             {
-                //IsChecked = true;
-                SimilarMarginFactory.similarMargin.similarMarginElement.SetCurrentPoint(
-                    ConvertToPosition(RequestSelection.TopPoint));
+                if (OptionPage.MarginEnabled)
+                {
+                    //IsChecked = true;
+                    MarginElement.SetCurrentPoint(
+                        ConvertToPosition(RequestSelection.TopPoint));
+                }
                 // Output the selection logs.
-                OutputSelectionLogs(selectionNo, RequestSelection);
+                OutputSelectionLogs(RequestSelection);
                 // Highlight by background thread.
                 ThreadStartHighlighting();
             }
@@ -320,7 +398,7 @@ namespace SimilarHighlight
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
             }
         }
 
@@ -358,8 +436,9 @@ namespace SimilarHighlight
                 {
                     // Get the similar Elements.
                     var ret = InferrerSelector.GetSimilarElements(Locations,
-                            RootElement, isStrict, treeType);
+                            RootElement, treeType);
 
+                    PaneLineCnt = RequestSelection.TextPane.Height;
                     TimeWatch.Start();
                     // If no similar element is found then nothing will be highlighted.
                     if (ret.Count() == 0 || ret.First().Item1 == 0)
@@ -373,7 +452,7 @@ namespace SimilarHighlight
 
                             // Get the similar Elements.
                             ret = InferrerSelector.GetSimilarElements(Locations,
-                                    RootElement, isStrict, treeType);
+                                    RootElement, treeType);
                             
                             // If no similar element is found then nothing will be highlighted.
                             if (ret.Count() == 0 || ret.First().Item1 == 0)
@@ -394,7 +473,7 @@ namespace SimilarHighlight
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
             }
         }
 
@@ -438,7 +517,7 @@ namespace SimilarHighlight
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
             }
             return true;
         }
@@ -506,23 +585,25 @@ namespace SimilarHighlight
                     TMPCurrentSelectNum = CurrentSelectNum;
                 }
                 //IsChecked = true;
-                this.RedrawMargin();
+                if (OptionPage.MarginEnabled)
+                {
+                    this.RedrawMargin();
+                }
                 // If another change hasn't happened, do a real update
                 if (currentSelection == RequestSelection)
                     SynchronousUpdate(currentSelection, wordSpan, CurrentWordForCheck);
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
             }
         }
 
-        public static void SetCurrentScrollPointLine(SnapshotPoint currentPoint)
+        public void SetCurrentScrollPointLine(SnapshotPoint currentPoint)
         {
             NormalizedSnapshotSpanCollection wordSpan = new NormalizedSnapshotSpanCollection(NewSpanAll);
-         //   View.TextSnapshot.GetLineNumberFromPosition(currentPoint.Position);
             // TODO if the elements of a line is bigger than 1, the position need to fix.
-            int linenum = View.TextSnapshot.GetLineNumberFromPosition(currentPoint.Position);
+            int linenum = this.View.TextSnapshot.GetLineNumberFromPosition(currentPoint.Position);
             try
             {
                 var curSelection = wordSpan.Select((item, index) => new { Item = item, Index = index })
@@ -535,13 +616,16 @@ namespace SimilarHighlight
                     var newStartOffset = ConvertToCharOffset(newSpan.Start);
                     Document.Selection.MoveToAbsoluteOffset(newStartOffset, false);
                     Document.Selection.MoveToAbsoluteOffset(newStartOffset + newSpan.Length, true);
-                    // Set the new element.
-                    SimilarMarginFactory.similarMargin.similarMarginElement.SetCurrentPoint(newSpan.Start);
+                    if (OptionPage.MarginEnabled)
+                    {
+                        // Set the new element.
+                        MarginElement.SetCurrentPoint(newSpan.Start);
+                    }
                 }
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
             }
         }
         
@@ -549,7 +633,7 @@ namespace SimilarHighlight
         {
             Application.Current.Dispatcher.Invoke((Action)(() =>
             {
-                SimilarMarginFactory.similarMargin.similarMarginElement.RedrawSimilarMargin();
+                MarginElement.RedrawSimilarMargin();
             }));
         }
 
@@ -570,7 +654,7 @@ namespace SimilarHighlight
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
             }
             return false;
         }
@@ -601,7 +685,7 @@ namespace SimilarHighlight
                 }
                 catch (Exception exc)
                 {
-                    Debug.Write(exc.ToString());
+                    OutputMsgForExc(exc.ToString());
                 }
             }
             
@@ -619,7 +703,7 @@ namespace SimilarHighlight
         }
 
         // The position data will be converted from SnapshotPoint to TextSelection.
-        internal static int ConvertToCharOffset(SnapshotPoint point)
+        internal int ConvertToCharOffset(SnapshotPoint point)
         {
             if (hasSR)
             {
@@ -656,15 +740,15 @@ namespace SimilarHighlight
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
             }
         }
 
-        private void OutputSelectionLogs(int selectionNo, TextSelection textSelection)
+        private void OutputSelectionLogs(TextSelection textSelection)
         {
             if (OutputWindow != null)
             {
-                OutputMsg("Selection: " + (++selectionNo) + ", Line: " + textSelection.TopPoint.Line + ", Range: (" +
+                OutputMsg("Selection: " + (++SelectionNo) + ", Line: " + textSelection.TopPoint.Line + ", Range: (" +
                     textSelection.TopPoint.LineCharOffset + ", " + textSelection.BottomPoint.LineCharOffset + "), Code: " +
                     textSelection.Text.Trim());
             }
@@ -691,6 +775,17 @@ namespace SimilarHighlight
             OutputWindow.WriteLine(strMsg);
         }
 
+        public static void OutputMsgForExc(string strMsg)
+        {
+            if (OutputWindow != null)
+            {
+                OutputWindow.WriteLine(strMsg);
+            }
+            else {
+                Debug.WriteLine(strMsg);
+            }
+        }
+
         void SynchronousUpdate(TextSelection CurrentSelection, NormalizedSnapshotSpanCollection newSpans, 
             SnapshotSpan? newCurrentWord)
         {
@@ -711,7 +806,7 @@ namespace SimilarHighlight
                 }
                 catch (Exception exc)
                 {
-                    Debug.Write(exc.ToString());
+                    OutputMsgForExc(exc.ToString());
                 }
             }
         }
@@ -746,7 +841,7 @@ namespace SimilarHighlight
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
             }
 
             // First, yield back the word the cursor is under (if it overlaps)
@@ -760,7 +855,7 @@ namespace SimilarHighlight
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
             }
 
             if (blOverlapsWith) {
@@ -831,13 +926,16 @@ namespace SimilarHighlight
                     selected.MoveToAbsoluteOffset(newStartOffset, false);
                     selected.MoveToAbsoluteOffset(newStartOffset + newSpan.Length, true);
                     //IsChecked = true;
-                    // Set the new element.
-                    SimilarMarginFactory.similarMargin.similarMarginElement.SetCurrentPoint(newSpan.Start);
+                    if (OptionPage.MarginEnabled)
+                    {
+                        // Set the new element.
+                        MarginElement.SetCurrentPoint(newSpan.Start);
+                    }
                 }
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
             }
         }
 
@@ -858,7 +956,7 @@ namespace SimilarHighlight
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                OutputMsgForExc(exc.ToString());
             }
         }
 

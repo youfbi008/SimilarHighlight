@@ -23,9 +23,10 @@ namespace SimilarHighlight.ContainerMargin
         private readonly string _marginName;
         private readonly Orientation _orientation;
         private readonly IList<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> _marginProviders;
+        public SimilarMargin SimilarMargin { get; set; }
 
         protected readonly IWpfTextViewHost TextViewHost;
-        protected IWpfTextViewMarginProvider similarMarginFactory { get; set; }
+        //protected IWpfTextViewMarginProvider similarMarginFactory { get; set; }
 
         protected BaseMargin(string name, Orientation orientation, IWpfTextViewHost textViewHost,
                                   IList<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> marginProviders)
@@ -42,10 +43,10 @@ namespace SimilarHighlight.ContainerMargin
             {
                 if (String.Compare(marginProvider.Metadata.MarginContainer, _marginName, StringComparison.OrdinalIgnoreCase) == 0)
                 {
-                    if (String.Compare(marginProvider.Metadata.Name, "SimilarMargin", StringComparison.OrdinalIgnoreCase) == 0)
-                    {
-                        similarMarginFactory = marginProvider.Value;
-                    }
+                    //if (String.Compare(marginProvider.Metadata.Name, "SimilarMargin", StringComparison.OrdinalIgnoreCase) == 0)
+                    //{
+                    //    similarMarginFactory = marginProvider.Value;
+                    //}
                     
                     if (viewRoles.ContainsAny(marginProvider.Metadata.TextViewRoles))
                     {
@@ -128,6 +129,8 @@ namespace SimilarHighlight.ContainerMargin
 
         protected virtual void Initialize()
         {
+            if (! HLTextTagger.OptionPage.MarginEnabled) return;
+
             this.TextViewHost.TextView.TextDataModel.ContentTypeChanged += OnContentTypeChanged;
 
             this.IsVisibleChanged += delegate(object sender, DependencyPropertyChangedEventArgs e)
@@ -180,7 +183,10 @@ namespace SimilarHighlight.ContainerMargin
                     //And re-use the margin if it exists. Create a new one if it doesn't.
                     IWpfTextViewMargin margin = (marginData != null) ? marginData.Item2 : marginProvider.Value.CreateMargin(this.TextViewHost, this);
                     if (margin != null)
+                    {
+                        this.SimilarMargin = margin as SimilarMargin;
                         this.AddMargin(margin, marginProvider, marginData == null);
+                    }
                 }
             }
             finally

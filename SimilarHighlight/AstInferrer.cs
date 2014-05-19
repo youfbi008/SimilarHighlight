@@ -194,7 +194,7 @@ namespace SimilarHighlight
         }
 
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, XElement root, bool isStrict,
+                IEnumerable<LocationInfo> locations, XElement root,
                 int range = 5, bool inner = true, bool outer = true)
         {
             try
@@ -244,21 +244,19 @@ namespace SimilarHighlight
                 }
 
                 int minSimilarity = 0;
-                if (isStrict)
+                // If the similarity is too small. 
+                if (commonKeys.Count <= similarityRange)
                 {
-                    // If the similarity is too small. 
-                    if (commonKeys.Count <= similarityRange)
-                    {
-                        return Enumerable.Empty<Tuple<int, CodeRange>>();
-                    }
+                    return Enumerable.Empty<Tuple<int, CodeRange>>();
+                }
 
-                    // Get the similarity threshold.
-                    minSimilarity = commonKeys.Count - similarityRange;
-                }
-                else
-                {
-                    minSimilarity = commonKeys.Count * 2 / 3;
-                }
+                // Get the similarity threshold.
+                minSimilarity = commonKeys.Count - similarityRange;
+                //}
+                //else
+                //{
+                //    minSimilarity = commonKeys.Count * 2 / 3;
+                //}
 
                 TimeWatch.Start();
 
@@ -291,7 +289,7 @@ namespace SimilarHighlight
             }
             catch (Exception exc)
             {
-                Debug.Write(exc.ToString());
+                HLTextTagger.OutputMsgForExc(exc.ToString());
             }
             return null;
         }

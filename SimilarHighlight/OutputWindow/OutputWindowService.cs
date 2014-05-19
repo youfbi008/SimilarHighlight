@@ -12,6 +12,9 @@ namespace SimilarHighlight.OutputWindow
     [Export(typeof(IOutputWindowService))]
     internal sealed class OutputWindowService : IOutputWindowService
     {
+        // This is for preventing unexpected System error.
+        private static int TryCount { get; set; }
+
         [Import]
         public SVsServiceProvider GlobalServiceProvider = null;
 
@@ -38,14 +41,20 @@ namespace SimilarHighlight.OutputWindow
             var outputWindow = olesp.TryGetGlobalService<SVsOutputWindow, IVsOutputWindow>();
             if (outputWindow == null)
                 return null;
-
+            
             Guid guid;
             if (!outputWindows.TryGetValue(name, out guid))
             {
                 var definition = OutputWindowDefinitions.FirstOrDefault(lazy => lazy.Metadata.Name.Equals(name));
                 if (definition == null)
                     return null;
-
+                TryCount++;
+                if (TryCount > 1)
+                {
+                    name = "Debug";
+                    if (outputWindows.TryGetValue(name, out guid))
+                        return GetPane(name, guid, outputWindow);
+                }
                 guid = Guid.NewGuid();
                 // this controls whether the pane is listed in the output panes dropdown list, *not* whether the pane is initially selected
                 const bool visible = true;
@@ -57,10 +66,16 @@ namespace SimilarHighlight.OutputWindow
                 outputWindows.Add(definition.Metadata.Name, guid);
             }
 
+            return GetPane(name, guid, outputWindow);
+        }
+
+        private IOutputWindowPane GetPane(string name, Guid guid, IVsOutputWindow outputWindow) {
+
             IVsOutputWindowPane vspane = null;
             if (ErrorHandler.Failed(ErrorHandler.CallWithCOMConvention(() => outputWindow.GetPane(ref guid, out vspane))))
                 return null;
 
+            IOutputWindowPane pane;
             pane = new VsOutputWindowPaneAdapter(vspane);
             panes[name] = pane;
             return pane;

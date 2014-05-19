@@ -7,11 +7,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("MyToolsOption")]
+[assembly: AssemblyTitle("SimilarHighlight.Option")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Company")]
-[assembly: AssemblyProduct("MyToolsOption")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("SimilarHighlight.Option")]
 [assembly: AssemblyCopyright("")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]   
