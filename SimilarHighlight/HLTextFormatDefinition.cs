@@ -28,7 +28,7 @@ namespace SimilarHighlight
         {
             this.BackgroundColor = Colors.LightGreen;
             this.ForegroundColor = Colors.DarkBlue;
-            this.DisplayName = "Highlight Word";
+            this.DisplayName = "SimilarHighlight";
             this.ZOrder = 5;
         }
     }

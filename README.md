@@ -13,10 +13,11 @@ The optional functions:
 Then you can change the current selected element by selecting marks in the margin.  
 2,A pane named "Similar" will be added into the output window, provide more information about similar elements.  
 3,In `Tools -> Options -> SimilarHighlight`, you can change some settings or disable some functions.
+And in `Fonts and Color -> SimilarHighlight`, you can change the highlighting colors".
 
 This is a introductory video on YouTube. http://youtu.be/6MBXuqFHS2w  (I will update this video.)  
 
-ShortKeys:
+Shortcut Keys:
 * `Ctrl + Alt + ->` to make the next similar element selected.  
 * `Ctrl + Alt + <-` to make the previous similar element selected.  
 * `ESC` to make the highlighted elements return to normal.  
