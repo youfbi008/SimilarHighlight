@@ -1,20 +1,20 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
-  <Metadata>
-    <Identity Id="SimilarHighlight.Microsoft.1747f18e-0b0e-45b2-9a06-7348a55e3dc7" Version="0.94" Language="en-US" Publisher="Yujiang YANG" />
-    <DisplayName>SimilarHighlight</DisplayName>
-    <Description xml:space="preserve">Highlight all similar elements by selecting text twice. Then the current cursor can be moved onto other element of the similar elements by shortcuts.</Description>
-    <Icon>ICONsnapshot.jpg</Icon>
-    <PreviewImage>ICONsnapshot.jpg</PreviewImage>
-  </Metadata>
-  <Installation>
-    <InstallationTarget Id="Microsoft.VisualStudio.Pro" Version="11.0" />
-  </Installation>
-  <Dependencies>
-    <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="4.5" />
-  </Dependencies>
-  <Assets>
-    <Asset Type="Microsoft.VisualStudio.MefComponent" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%|" />
-    <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%.Option" Path="|SimilarHighlight.Option;PkgdefProjectOutputGroup|" />
-  </Assets>
+	<Metadata>
+		<Identity Id="SimilarHighlight.Microsoft.1747f18e-0b0e-45b2-9a06-7348a55e3dc7" Version="0.95" Language="en-US" Publisher="Yujiang YANG" />
+		<DisplayName>SimilarHighlight</DisplayName>
+		<Description xml:space="preserve">Highlight all similar elements by selecting text twice. Then the current cursor can be moved onto other element of the similar elements by shortcuts.</Description>
+		<Icon>ICONsnapshot.png</Icon>
+		<PreviewImage>ICONsnapshot.png</PreviewImage>
+	</Metadata>
+	<Installation>
+		<InstallationTarget Id="Microsoft.VisualStudio.Pro" Version="11.0" />
+	</Installation>
+	<Dependencies>
+		<Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="4.5" />
+	</Dependencies>
+	<Assets>
+		<Asset Type="Microsoft.VisualStudio.MefComponent" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%|" />
+		<Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%.Option" Path="|SimilarHighlight.Option;PkgdefProjectOutputGroup|" />
+	</Assets>
 </PackageManifest>

@@ -157,8 +157,6 @@
     <Compile Include="ContainerMargin\IContainerMargin.cs" />
     <Compile Include="ContainerMargin\PredefinedContainerMargin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SettingsStore\SettingsStoreImpl.cs" />
-    <Compile Include="SettingsStore\ISettingsStore.cs" />
     <Compile Include="TimeWatch.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -170,7 +168,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="ICONsnapshot.jpg">
+    <Content Include="ICONsnapshot.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>

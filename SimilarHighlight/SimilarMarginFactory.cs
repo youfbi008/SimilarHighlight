@@ -2,7 +2,6 @@ using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 using SimilarHighlight.ContainerMargin;
-using SimilarHighlight.SettingsStore;
 using SimilarHighlight.ContainerwMargin;
 
 namespace SimilarHighlight
@@ -14,17 +13,6 @@ namespace SimilarHighlight
     [TextViewRole(PredefinedTextViewRoles.Interactive)]
     sealed class SimilarMarginFactory : IWpfTextViewMarginProvider
     {
-        [Import(AllowDefault = true)]
-        internal ISettingsStore _settingsStore { get; set; }
-
-        public bool LoadOption(IEditorOptions options, string optionName)
-        {
-            if (_settingsStore != null)
-            {
-                return _settingsStore.LoadOption(options, optionName);
-            }
-            return false;
-        }
         public SimilarMargin similarMargin;
 
         /// <summary>

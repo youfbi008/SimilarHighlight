@@ -6,11 +6,14 @@
 SimilarHighlight is a simple extension by the Managed Extensibility Framework.  
 
 1.Highlight all similar elements by selecting text twice.  
-2.The current cursor can be move onto other element of the similar elements by shortcuts.  
+2.The current cursor can be move on to other element of the similar elements by shortcuts.  
 
-And a pane named "Similar" will be added into the output window, then you can check some information in there.
+The optional functions:
+1,A margin weill be added on the right side of the editor, provide relative position information about similar elements.  
+2,A pane named "Similar" will be added into the output window, provide more information about similar elements.  
+3,In `Tools -> Options -> SimilarHighlight`, you can change some settings or disable some functions.
 
-This is a introductory video on YouTube. http://youtu.be/6MBXuqFHS2w  
+This is a introductory video on YouTube. http://youtu.be/6MBXuqFHS2w(I will update this video.)  
 
 ShortKeys:
 * `Ctrl + Alt + ->` to make the next similar element selected.  

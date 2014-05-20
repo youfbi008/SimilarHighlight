@@ -43,11 +43,6 @@ namespace SimilarHighlight.ContainerMargin
             {
                 if (String.Compare(marginProvider.Metadata.MarginContainer, _marginName, StringComparison.OrdinalIgnoreCase) == 0)
                 {
-                    //if (String.Compare(marginProvider.Metadata.Name, "SimilarMargin", StringComparison.OrdinalIgnoreCase) == 0)
-                    //{
-                    //    similarMarginFactory = marginProvider.Value;
-                    //}
-                    
                     if (viewRoles.ContainsAny(marginProvider.Metadata.TextViewRoles))
                     {
                         _marginProviders.Add(marginProvider);

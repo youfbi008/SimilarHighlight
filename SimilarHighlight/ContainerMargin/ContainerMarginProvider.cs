@@ -5,7 +5,6 @@ using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Outlining;
 using Microsoft.VisualStudio.Text.Projection;
 using Microsoft.VisualStudio.Utilities;
-using SimilarHighlight.SettingsStore;
 using Microsoft.VisualStudio.Text.Tagging;
 using SimilarHighlight.ContainerMargin;
 
@@ -27,37 +26,7 @@ namespace SimilarHighlight.ContainerMargin
 
         [Import]
         internal IOutliningManagerService OutliningManagerService { get; private set; }
-
-        [Import]
-        internal ITextEditorFactoryService EditorFactory { get; private set; }
-
-        [Import]
-        internal IProjectionBufferFactoryService ProjectionFactory { get; private set; }
-
-        [Import]
-        internal IEditorOptionsFactoryService EditorOptionsFactoryService { get; private set; }
-
-        [Import(AllowDefault = true)]
-        internal ISettingsStore _settingsStore { get; set; }
-
-        public bool LoadOption(IEditorOptions options, string optionName)
-        {
-            if (_settingsStore != null)
-            {
-                return _settingsStore.LoadOption(options, optionName);
-            }
-            return false;
-        }
-
-        public bool SaveOption(IEditorOptions options, string optionName)
-        {
-            if (_settingsStore != null)
-            {
-                return _settingsStore.SaveOption(options, optionName);
-            }
-            return false;
-        }
-
+                
         private IList<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> _orderedMarginProviders;
         internal IList<Lazy<IWpfTextViewMarginProvider, IWpfTextViewMarginMetadata>> OrderedMarginProviders
         {
