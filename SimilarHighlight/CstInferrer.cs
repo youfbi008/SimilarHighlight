@@ -308,7 +308,8 @@ namespace SimilarHighlight
                                                     ));
                         })
                         // Sort candidate nodes using the similarities
-                        .OrderByDescending(t => t.Item1).ToList();
+                        //.OrderByDescending(t => t.Item1)
+                        .ToList();
         }
     }
 }

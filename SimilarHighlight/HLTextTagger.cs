@@ -45,6 +45,7 @@ namespace SimilarHighlight
         public static IList<SnapshotSpan> NewSpanAll = new List<SnapshotSpan>();
         public static int PaneLineCnt { get; set; }
         public static OptionPage OptionPage { get; set; }
+        public static string FileName { get; set; }
 
         #region Private Members
     //    private SimilarMarginFactory SimilarMarginFactory; //static
@@ -106,9 +107,9 @@ namespace SimilarHighlight
         private static IOutputWindowPane OutputWindow;
         private int SelectionNo { get; set; }
         private int highlightNo { get; set; }
-        public static string FileName { get; set; }
+        
         private bool m_disposed;
-
+        public static List<Tuple<int, string, CodeRange>> OutputDatas = new List<Tuple<int, string, CodeRange>>();
         private SimilarMarginElement MarginElement { get; set; }
         #endregion
 
@@ -509,11 +510,6 @@ namespace SimilarHighlight
                 }
 
                 Locations.Add(tmpLocationInfo);
-                //if (Locations.Count == 1)
-                //{
-                //    IsChecked = true;
-                //}
-                //else { IsChecked = false; }
             }
             catch (Exception exc)
             {
@@ -553,7 +549,6 @@ namespace SimilarHighlight
                 }
                 CurrentSelectNum = 0;
                 highlightNo++;
-                OutputGeneralMsg("=================================Start:" + highlightNo + "==============================");
 
                 Parallel.ForEach(ret, tuple =>
                 {
@@ -565,12 +560,25 @@ namespace SimilarHighlight
                 });
 
                 TimeWatch.Stop("BuildSimilarElementsCollection");
-                OutputGeneralMsg("==================================End:" + highlightNo + "===============================");
                 if (NewSpanAll.Count == 0)
                 {
                     return;
                 }
-               
+
+                // Display the margin marks.
+                if (OptionPage.MarginEnabled)
+                {
+                    this.RedrawMargin();
+                }
+
+                // Display the output datas.
+                if (OutputWindow != null)
+                {
+                    System.Threading.Thread outputThread = new System.Threading.Thread(this.OutputSimilarDatas);
+                    outputThread.IsBackground = true;
+                    outputThread.Start();
+                }
+
                 NormalizedSnapshotSpanCollection wordSpan = new NormalizedSnapshotSpanCollection(NewSpanAll);
 
                 // TODO if the elements of a line is bigger than 1, the position need to fix.
@@ -584,11 +592,7 @@ namespace SimilarHighlight
                     // TODO temp  added
                     TMPCurrentSelectNum = CurrentSelectNum;
                 }
-                //IsChecked = true;
-                if (OptionPage.MarginEnabled)
-                {
-                    this.RedrawMargin();
-                }
+                
                 // If another change hasn't happened, do a real update
                 if (currentSelection == RequestSelection)
                     SynchronousUpdate(currentSelection, wordSpan, CurrentWordForCheck);
@@ -597,6 +601,17 @@ namespace SimilarHighlight
             {
                 OutputMsgForExc(exc.ToString());
             }
+        }
+
+        private void OutputSimilarDatas() {
+
+            OutputMsg("=================================Start:" + highlightNo + "==============================");
+
+            var outputDataList = OutputDatas.OrderByDescending(t => t.Item1).ToList();
+            outputDataList.ForEach(t => OutputSimilarElementData(t)); // To guarantee the outputing on the order. I give up "AsParallel().AsOrdered()".
+            OutputDatas.Clear();
+            outputDataList.Clear();
+            OutputMsg("==================================End:" + highlightNo + "===============================");
         }
 
         public void SetCurrentScrollPointLine(SnapshotPoint currentPoint)
@@ -732,8 +747,14 @@ namespace SimilarHighlight
                     tmpStart = new SnapshotPoint(View.TextSnapshot, startAndEnd.Item1);
                     tmpEnd = new SnapshotPoint(View.TextSnapshot, startAndEnd.Item2);
                 }
-                OutputSimilarElementLogs(tuple.Item1, fragment, tuple.Item2.StartLine + 1, 
-                    tuple.Item2.StartPosition + 1, tuple.Item2.EndPosition + 1);
+
+                if (OutputWindow != null)
+                {
+                    // Add the output datas.
+                    OutputDatas.Add(Tuple.Create(tuple.Item1, fragment, tuple.Item2));
+                }
+                //OutputSimilarElementLogs(tuple.Item1, fragment, tuple.Item2.StartLine + 1, 
+                //    tuple.Item2.StartPosition + 1, tuple.Item2.EndPosition + 1);
                 var tmpSpan = new SnapshotSpan(tmpStart, tmpEnd);
 
                 NewSpanAll.Add(tmpSpan);
@@ -754,13 +775,10 @@ namespace SimilarHighlight
             }
         }
 
-        private void OutputSimilarElementLogs(int score, string strMsg, int line, int start, int end)
+        private void OutputSimilarElementData(Tuple<int, string, CodeRange> tuple)
         {
-            if (OutputWindow != null)
-            {
-                OutputMsg("Line: " + line + ", Range: (" + start + ", " + end + "), " +
-                    "Similarity: " + score + ", Code: " + strMsg);
-            }
+            OutputMsg("Line: " + (tuple.Item3.StartLine + 1) + ", Range: (" + (tuple.Item3.StartPosition + 1) + ", " + (tuple.Item3.EndPosition + 1) + "), " +
+                "Similarity: " + tuple.Item1 + ", Code: " + tuple.Item2);
         }
 
         private void OutputGeneralMsg(string strMsg)
