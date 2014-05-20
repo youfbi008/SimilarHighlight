@@ -1,7 +1,7 @@
 ﻿﻿SimilarHighlight
 ================
 
-![Extension sample](https://github.com/youfbi008/SimilarHighlight/blob/master/PreviewCsharp.jpg?raw=true)
+![alt tag](Preview.png?raw=true)
 
 SimilarHighlight is a simple extension by the Managed Extensibility Framework.  
 
