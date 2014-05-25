@@ -542,9 +542,15 @@ namespace SimilarHighlight.ContainerMargin
 
             public double GetYCoordinateOfBufferPosition(SnapshotPoint bufferPosition)
             {
-                double scrollMapPosition = _scrollMap.GetCoordinateAtBufferPosition(bufferPosition);
-                return this.GetYCoordinateOfScrollMapPosition(scrollMapPosition);
-          //      return _realScrollBar.GetYCoordinateOfBufferPosition(bufferPosition);
+                try
+                {
+                    double scrollMapPosition = _scrollMap.GetCoordinateAtBufferPosition(bufferPosition);
+                    return this.GetYCoordinateOfScrollMapPosition(scrollMapPosition);
+                }
+                catch (Exception exc) {
+                    HLTextTagger.OutputMsgForExc(exc.ToString());
+                }
+                return 0.0;
             }
 
             public double GetYCoordinateOfScrollMapPosition(double scrollMapPosition)

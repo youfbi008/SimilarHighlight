@@ -13,6 +13,14 @@ namespace SimilarHighlight.Tests
 	[TestFixture]
     public class InferenceTest
     {
+        public void Inference() {
+            int local_int_A = 123;
+            string local_string_B = "hello";
+            string[] strNum = new string[] { 
+                "one", "two", "three","four", "five", "six", "seven", "eight", "nine",
+            };
+        }
+
 		[Test]
         [TestCase(@"../../../SimilarHighlight.Tests/InferenceTest.cs")]
 		public void TestGetSimilarElements(string path) {

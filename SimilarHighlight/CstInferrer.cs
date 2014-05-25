@@ -117,6 +117,10 @@ namespace SimilarHighlight
             for (; i <= length; i++)
             {
                 var newChildElements = new List<Tuple<CstNode, string>>();
+                if (childElements == null)
+                {
+                    break;
+                }
                 foreach (var t in childElements)
                 {
                     foreach (var e in t.Item1.Elements())
