@@ -39,6 +39,11 @@ namespace SimilarHighlight
         public bool IsNeedFix;
     }
 
+    public enum TreeType {
+        CST = 0,
+        AST = 1
+    }
+
     internal class HLTextTagger : ITagger<HLTextTag>, IDisposable
     {
         // the collecton of highlighted elements
@@ -104,7 +109,7 @@ namespace SimilarHighlight
         // Whether have the similar elements.
         private bool HaveSimilarElements = false;
         // CST : 0;  AST : 1;
-        private int treeType = 0;
+        private TreeType treeType = TreeType.CST;
         private static IOutputWindowPane OutputWindow;
         private int SelectionNo { get; set; }
         private int highlightNo { get; set; }
@@ -144,7 +149,7 @@ namespace SimilarHighlight
                         case ".CS":
                             this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.CSharp.CSharpCstGeneratorUsingAntlr3();
                             break;
-                        // TODO: ExternalGenerators will be fixed.
+                        // TODO: ExternalGenerators will be fixed in future.
                         case ".PY": //TODO: python 2 and 3 has the same extension that is "py".
                             this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Python.Python2CstGenerator();
                             break;

@@ -17,15 +17,17 @@ namespace SimilarHighlight
     public static class InferrerSelector
     {
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, XElement root, int treeType, ref ISet<string> nodeNames)
+                IEnumerable<LocationInfo> locations, XElement root, TreeType treeType, ref ISet<string> nodeNames)
         {
             try
             {
-                if (treeType == 0) {
+                if (treeType == TreeType.CST)
+                {
                     return CstInferrer.GetSimilarElements(locations,
                             root, ref nodeNames);
                 }
-                else if (treeType == 1) {
+                else if (treeType == TreeType.AST)
+                {   // TODO: The class will be fix in future.
                     return AstInferrer.GetSimilarElements(locations,
                             root, ref nodeNames);
                 }

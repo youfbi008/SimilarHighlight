@@ -44,29 +44,6 @@ namespace SimilarHighlight.Option
             set { similarityLevel = value; }
         }
 
-        //private Color backgroundColor = Color.LightGreen;
-
-        //[Category("Highlight Settings")]
-        //[DisplayName("BackgroundColor")]
-        //[Description("Background Color")]
-        //[Editor(typeof(ColorEditor), typeof(UITypeEditor))]
-        //public Color BackgroundColor
-        //{
-        //    get { return backgroundColor; }
-        //    set { backgroundColor = value; }
-        //}
-
-        //private Color foregroundColor = Color.DarkBlue;
-
-        //[Category("Highlight Settings")]
-        //[DisplayName("ForegroundColor")]
-        //[Description("Foreground Color")]
-        //public Color ForegroundColor
-        //{
-        //    get { return foregroundColor; }
-        //    set { foregroundColor = value; }
-        //}
-
         private bool marginEnabled = true;
 
         [Category("Margin Settings")]
@@ -143,32 +120,6 @@ namespace SimilarHighlight.Option
             get { return outputEnabled; }
             set { outputEnabled = value; }
         }
-
-
-        //private Color caretColor = Colors.Red;
-
-        //[Category("Margin Settings")]
-        //[DisplayName("CaretColor")]
-        //[Description("My integer option")]
-        //public Color CaretColor
-        //{
-        //    get { return caretColor; }
-        //    set { caretColor = value; }
-        //}
-
-        //const char DefaultLetter = 'a';
-
-        //public OptionPage()
-        //{
-        //    SetToDefaults();
-        //}
-
-        //[DefaultValue(DefaultLetter)]
-        //public char BadLetter
-        //{
-        //    get;
-        //    set;
-        //}
 
         public override void ResetSettings()
         {
