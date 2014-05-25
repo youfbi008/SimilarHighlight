@@ -15,7 +15,7 @@ Then you can change the current selected element by selecting marks in the margi
 5.In `Tools -> Options -> SimilarHighlight`, you can change some settings or disable some functions.
 And in `Fonts and Color -> SimilarHighlight`, you can change the highlighting colors".
 
-This tool has been published on http://visualstudiogallery.msdn.microsoft.com/5b2a1ed1-3514-4786-8a83-a7d82c3a336a.  
+This tool has been published on http://goo.gl/KqtTvY. I would really appreciate any feedback.  
 This is a introductory video on YouTube. http://youtu.be/6MBXuqFHS2w  (I will update this video.)  
 
 Shortcut Keys:
