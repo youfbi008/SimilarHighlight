@@ -67,6 +67,7 @@ namespace SimilarHighlight
 
         // Make the highlight operation to background.
         private System.Threading.Thread listenThread;
+        private System.Threading.Thread outputThread;
         // The highlighted elements will be saved when the text is changed.
         private NormalizedSnapshotSpanCollection TmpWordSpans { get; set; }
         // location datas 
@@ -107,7 +108,8 @@ namespace SimilarHighlight
         private static IOutputWindowPane OutputWindow;
         private int SelectionNo { get; set; }
         private int highlightNo { get; set; }
-        
+
+        private ISet<string> nodeNames;
         private bool m_disposed;
         public static List<Tuple<int, string, CodeRange>> OutputDatas = new List<Tuple<int, string, CodeRange>>();
         private SimilarMarginElement MarginElement { get; set; }
@@ -176,7 +178,7 @@ namespace SimilarHighlight
                         this.WordSpans = new NormalizedSnapshotSpanCollection();
                         this.TmpWordSpans = new NormalizedSnapshotSpanCollection();
                         this.CurrentWord = null;
-                        
+                        this.nodeNames = new HashSet<string>();
                         OutputWindow = outputWindow;
                         OptionPage = optionPage;
                         View = view;
@@ -338,6 +340,7 @@ namespace SimilarHighlight
                 var tmpTxt = RequestSelection.Text.Trim();
                 if (tmpTxt != "")
                 {
+                    OutputSelectionLogs(RequestSelection);
                     // Highlight by background thread.
                     ThreadStartHighlighting();
                 }
@@ -437,7 +440,7 @@ namespace SimilarHighlight
                 {
                     // Get the similar Elements.
                     var ret = InferrerSelector.GetSimilarElements(Locations,
-                            RootElement, treeType);
+                            RootElement, treeType, ref nodeNames);
 
                     PaneLineCnt = RequestSelection.TextPane.Height;
                     TimeWatch.Start();
@@ -453,7 +456,7 @@ namespace SimilarHighlight
 
                             // Get the similar Elements.
                             ret = InferrerSelector.GetSimilarElements(Locations,
-                                    RootElement, treeType);
+                                    RootElement, treeType, ref nodeNames);
                             
                             // If no similar element is found then nothing will be highlighted.
                             if (ret.Count() == 0 || ret.First().Item1 == 0)
@@ -471,6 +474,10 @@ namespace SimilarHighlight
                     // Highlight operation.
                     Highlight(currentSelection, ret);
                 }
+            }
+            catch (ThreadAbortException tae)
+            {
+                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[HighlightSimilarElements method]");
             }
             catch (Exception exc)
             {
@@ -511,6 +518,10 @@ namespace SimilarHighlight
 
                 Locations.Add(tmpLocationInfo);
             }
+            catch (ThreadAbortException tae)
+            {
+                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[BuildLocationsFromTwoElements method]");
+            }
             catch (Exception exc)
             {
                 OutputMsgForExc(exc.ToString());
@@ -528,7 +539,7 @@ namespace SimilarHighlight
                 var currentStart = CurrentWordForCheck.Start;
                 var currentEnd = CurrentWordForCheck.End;
 
-                if (Locations[0].IsNeedFix || Locations[1].IsNeedFix)
+                if (Locations[0].IsNeedFix || Locations[1].IsNeedFix || nodeNames.Contains("element_initializer"))
                 {
                     FixKit = Tuple.Create(RegexNeedFix,
                                         Tuple.Create(startOffset, endOffset));
@@ -574,9 +585,21 @@ namespace SimilarHighlight
                 // Display the output datas.
                 if (OutputWindow != null)
                 {
-                    System.Threading.Thread outputThread = new System.Threading.Thread(this.OutputSimilarDatas);
-                    outputThread.IsBackground = true;
-                    outputThread.Start();
+                    try
+                    {
+                        if (this.outputThread != null && this.outputThread.IsAlive)
+                        {
+                            this.outputThread.Abort();                       
+                        }
+                        this.outputThread = new System.Threading.Thread(this.OutputSimilarDatas);
+                        this.outputThread.IsBackground = true;
+                        this.outputThread.Priority = ThreadPriority.Normal;
+                        this.outputThread.Start();
+                    }
+                    catch (ThreadAbortException tae)
+                    {
+                        OutputMsgForExc("Output thread is stopping.");
+                    }
                 }
 
                 NormalizedSnapshotSpanCollection wordSpan = new NormalizedSnapshotSpanCollection(NewSpanAll);
@@ -596,6 +619,10 @@ namespace SimilarHighlight
                 // If another change hasn't happened, do a real update
                 if (currentSelection == RequestSelection)
                     SynchronousUpdate(currentSelection, wordSpan, CurrentWordForCheck);
+            }
+            catch (ThreadAbortException tae)
+            {
+                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[Highlight method]");
             }
             catch (Exception exc)
             {
@@ -637,6 +664,10 @@ namespace SimilarHighlight
                         MarginElement.SetCurrentPoint(newSpan.Start);
                     }
                 }
+            }
+            catch (ThreadAbortException tae)
+            {
+                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[SetCurrentScrollPointLine method]");
             }
             catch (Exception exc)
             {
@@ -759,6 +790,10 @@ namespace SimilarHighlight
 
                 NewSpanAll.Add(tmpSpan);
             }
+            catch (ThreadAbortException tae)
+            {
+                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[BuildSimilarElementsCollection method]");
+            }
             catch (Exception exc)
             {
                 OutputMsgForExc(exc.ToString());
@@ -822,6 +857,10 @@ namespace SimilarHighlight
                         tempEvent(this, new SnapshotSpanEventArgs(new SnapshotSpan(
                             SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
                 }
+                catch (ThreadAbortException tae)
+                {
+                    HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[SynchronousUpdate method]");
+                }
                 catch (Exception exc)
                 {
                     OutputMsgForExc(exc.ToString());
@@ -833,7 +872,6 @@ namespace SimilarHighlight
 
         public IEnumerable<ITagSpan<HLTextTag>> GetTags(NormalizedSnapshotSpanCollection spans)
         {
-            
             if (CurrentWord == null)
                 yield break;
 
@@ -841,6 +879,7 @@ namespace SimilarHighlight
             // collection throughout
             var currentWord = CurrentWord.Value;
             var wordSpans = WordSpans;
+            bool blOverlapsWith = false;
 
             if (spans.Count == 0 || WordSpans.Count == 0)
                 yield break;
@@ -856,20 +895,12 @@ namespace SimilarHighlight
                     TmpWordSpans = wordSpans;
                     currentWord = currentWord.TranslateTo(spans[0].Snapshot, SpanTrackingMode.EdgeExclusive);
                 }
-            }
-            catch (Exception exc)
-            {
-                OutputMsgForExc(exc.ToString());
-            }
-
-            // First, yield back the word the cursor is under (if it overlaps)
-            // Note that we'll yield back the same word again in the wordspans collection;
-            // the duplication here is expected.
-            // It's not necessary for current needs.
-            bool blOverlapsWith = false;
-            try
-            {
+   
                 blOverlapsWith = spans.OverlapsWith(new NormalizedSnapshotSpanCollection(currentWord));
+            }
+            catch (ThreadAbortException tae)
+            {
+                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[GetTags method]");
             }
             catch (Exception exc)
             {
@@ -883,21 +914,7 @@ namespace SimilarHighlight
             // Second, yield all the other words in the file
             foreach (SnapshotSpan span in NormalizedSnapshotSpanCollection.Overlap(spans, wordSpans))
             {
-                // TODO: Maybe the next element will be determined by the cursor in new screen.                
-                //var curSelection = wordSpans.AsParallel().Select((item, index) => new { Item = item, Index = index })
-                //                .First(sel => (sel.Item.Start <= span.Start &&
-                //                sel.Item.End >= span.End));
-
-                //if (curSelection != null)
-                //{
-                //    var tmpindex = curSelection.Index;
-                //    // If the new span which will be displayed is a long distance from the last selected element.
-                //    if (tmpindex - CurrentSelectNum > 10 || CurrentSelectNum - tmpindex > 10)
-                //        TMPCurrentSelectNum = tmpindex;
-                //    else if ( tmpindex - CurrentSelectNum < 3 || CurrentSelectNum - tmpindex < 3) {
-                //        CurrentSelectNum = TMPCurrentSelectNum;
-                //    }
-                //}
+                // TODO: Maybe the next element will be determined by the cursor in new screen.
                 yield return new TagSpan<HLTextTag>(span, new HLTextTag());
             }
         }
@@ -963,9 +980,21 @@ namespace SimilarHighlight
             {
                 if (isBackground)
                 {
-                    this.listenThread = new System.Threading.Thread(this.HighlightSimilarElements);
-                    this.listenThread.IsBackground = true;
-                    this.listenThread.Start();
+                     try
+                     {
+                        if (this.listenThread != null && this.listenThread.IsAlive)
+                        {
+                            this.listenThread.Abort();
+                        }
+                        this.listenThread = new System.Threading.Thread(this.HighlightSimilarElements);
+                        this.listenThread.IsBackground = true;
+                        this.listenThread.Priority = ThreadPriority.Highest;
+                        this.listenThread.Start();
+                     }
+                     catch (ThreadAbortException tae)
+                     {
+                         OutputMsgForExc("Similar thread is stopping.");
+                     }
                 }
                 else
                 {

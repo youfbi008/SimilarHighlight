@@ -194,7 +194,7 @@ namespace SimilarHighlight
         }
 
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, XElement root,
+                IEnumerable<LocationInfo> locations, XElement root, ref ISet<string> nodeNames,
                 int range = 5, bool inner = true, bool outer = true)
         {
             try
@@ -210,7 +210,9 @@ namespace SimilarHighlight
                 }
 
                 // Determine the node names to extract candidate nodes from the ASTs
-                var names = AdoptNodeNames(elements);
+                nodeNames = AdoptNodeNames(elements);
+
+                var names = nodeNames;
 
                 // Extract candidate nodes that has one of the determined names
                 var candidates = new List<IEnumerable<AstNode>>();

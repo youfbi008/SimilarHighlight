@@ -28,14 +28,15 @@ using Code2Xml.Core.Location;
 using Paraiba.Collections.Generic;
 using Paraiba.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace SimilarHighlight
 {
     public static class CstInferrer
     {
-
         private static int keysCount { get; set; }
 
+        // TODO: When the elements from different method, the different will be considered.
         public static HashSet<string> GetSurroundingKeys(
                 this CstNode node, int length, bool inner = true, bool outer = true)
         {
@@ -82,11 +83,11 @@ namespace SimilarHighlight
                             // for Preconditions.checkArguments()
                             ret.Add(t.Item2 + ">'" + e.TokenText + "'");
                         }
-                        foreach (var e in t.Item1.Descendants())
-                        {
-                            // トークンが存在するかチェックする弱い条件
-                            //ret.Add(t.Item2 + ">>'" + e.TokenText() + "'");
-                        }
+                        //foreach (var e in t.Item1.Descendants())
+                        //{
+                        //    // トークンが存在するかチェックする弱い条件
+                        //    //ret.Add(t.Item2 + ">>'" + e.TokenText() + "'");
+                        //}
                     }
                     foreach (var e in parentElement.Item1.Siblings(10))
                     {
@@ -138,17 +139,6 @@ namespace SimilarHighlight
             return ret;
         }
 
-        //public static HashSet<string> GetUnionKeys(
-        //        this IEnumerable<CstNode> elements, int length, bool inner = true, bool outer = true)
-        //{
-        //    var commonKeys = new HashSet<string>();
-        //    foreach (var element in elements) {
-        //        var keys = element.GetSurroundingKeys(length, inner, outer);
-        //        commonKeys.UnionWith(keys);
-        //    }
-        //    return commonKeys;
-        //}
-
         public static HashSet<string> GetCommonKeys(
                 this IEnumerable<CstNode> elements, int length, bool inner = true, bool outer = true)
         {
@@ -195,13 +185,11 @@ namespace SimilarHighlight
         }
 
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, XElement root,
+                IEnumerable<LocationInfo> locations, XElement root, ref ISet<string> nodeNames,
                 int range = 5, bool inner = true, bool outer = true)
         {
             try
             {
-                var similarityRange = 0;
-
                 // Convert the location informatoin (CodeRange) to the node (XElement) in the ASTs
                 var elements = new List<CstNode>();
 
@@ -211,8 +199,9 @@ namespace SimilarHighlight
                 }
 
                 // Determine the node names to extract candidate nodes from the ASTs
-                var names = AdoptNodeNames(elements);
+                nodeNames = AdoptNodeNames(elements);
 
+                var names = nodeNames;
                 // Extract candidate nodes that has one of the determined names
                 var candidates = new List<IEnumerable<CstNode>>();
 
@@ -232,55 +221,25 @@ namespace SimilarHighlight
                 //}
                 TimeWatch.Stop("FindOutCandidateElements");
 
-                
-                // Get the similarity range.
-                if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.High)
-                {
-                    similarityRange = 0;//keysCount / (int)Option.OptionPage.SimilarityType.High
-                }
-                else if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.Stardard)
-                {
-                    similarityRange = keysCount / (int)Option.OptionPage.SimilarityType.Stardard;
-                }
-                else if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.Low)
-                {
-                    similarityRange = keysCount / (int)Option.OptionPage.SimilarityType.Low;
-                }
-                else
-                {
-                    similarityRange = keysCount / 4;
-                }
-
-                int minSimilarity = 0;
-                if (similarityRange > 0)
-                {
-                    // If the similarity is too small. 
-                    if (commonKeys.Count <= similarityRange)
-                    {
-                        return Enumerable.Empty<Tuple<int, CodeRange>>();
-                    }
-
-                    // Get the similarity threshold.
-                    minSimilarity = commonKeys.Count - similarityRange;
-                }
-                else
-                {
-                    minSimilarity = commonKeys.Count;
-
-                    var rangeTest = new List<IEnumerable<CstNode>>();
-                    rangeTest.Add(candidates[0].Take(3).ToList());
-                    if (rangeTest.GetSimilars(commonKeys, minSimilarity).Count() == 0) {
-                        minSimilarity = minSimilarity - 2;
-                    }
-                }
+                var minSimilarity = GetMinSimilarity((double)commonKeys.Count);
 
                 TimeWatch.Start();
 
                 // Get the similar nodes collection. 
                 var ret = candidates.GetSimilars(commonKeys, minSimilarity);
 
+                if (names.Contains("element_initializer")) {
+                    var retArray = candidates.GetOtherSimilars(commonKeys);
+
+                    ret = ret.Concat(retArray).ToList();
+                }
+
                 TimeWatch.Stop("FindOutSimilarElements");
                 return ret;
+            }
+            catch (ThreadAbortException tae)
+            {
+                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[CstInferrer.GetSimilarElements method]");
             }
             catch (Exception exc)
             {
@@ -290,9 +249,9 @@ namespace SimilarHighlight
         }
 
         private static IEnumerable<Tuple<int, CodeRange>> GetSimilars(this List<IEnumerable<CstNode>> candidates,
-            HashSet<string> commonKeys, int minSimilarity, int range = 5, bool inner = true, bool outer = true)
+            HashSet<string> commonKeys, double minSimilarity, int range = 5, bool inner = true, bool outer = true)
         {
-             return candidates.AsParallel().SelectMany(
+            return candidates.AsParallel().SelectMany(
                         kv =>
                         {
                             return kv.Select(
@@ -313,7 +272,78 @@ namespace SimilarHighlight
                         })
                         // Sort candidate nodes using the similarities
                         //.OrderByDescending(t => t.Item1)
-                        .ToList();
+                        .ToList();//.ToList()
+        }
+
+        private static IEnumerable<Tuple<int, CodeRange>> GetOtherSimilars(this List<IEnumerable<CstNode>> candidates,
+            HashSet<string> commonKeys, int range = 5, bool inner = true, bool outer = true)
+        {
+            return candidates.AsParallel().SelectMany(
+                        kv =>
+                        {
+                            return kv.Select(
+                                    e => Tuple.Create(
+                                        // Count how many common surrounding nodes each candidate node has 
+                                        e.GetSurroundingKeys(range, inner, outer)
+                                            .Count(commonKeys.Contains),
+                                            e))
+                                // The candidate node will be taken as similar node 
+                                // when the number of common surrounding nodes is bigger than the similarity threshold.
+                                     .Where(e => e.Item2.RuleId == "334"
+                                     )
+                                     .Select(
+                                            t => Tuple.Create(
+                                                    t.Item1,	// Indicates the simlarity
+                                                    CodeRange.Locate(t.Item2)
+                                                    ));
+                        })
+                // Sort candidate nodes using the similarities
+                //.OrderByDescending(t => t.Item1)
+                        .ToList();//
+        }
+
+        private static double GetMinSimilarity(double commonCount)
+        {
+            double minSimilarity = 0;
+            if (commonCount <= 5)
+            {
+                if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.High)
+                {
+                    minSimilarity = commonCount;
+                }
+                else if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.Stardard)
+                {
+                    minSimilarity = commonCount - 1;
+                }
+                else if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.Low)
+                {
+                    minSimilarity = commonCount - 2;
+                }
+            }
+            else {
+                if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.High)
+                {
+                    if (commonCount <= 10)
+                    {
+                        minSimilarity = commonCount - 1;
+                    }
+                    else {
+                        minSimilarity = commonCount * (double)Option.OptionPage.SimilarityType.High / 10;
+                    }
+                }
+                else if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.Stardard)
+                {
+                    minSimilarity = commonCount * (double)Option.OptionPage.SimilarityType.Stardard / 10;
+                }
+                else if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.Low)
+                {
+                    minSimilarity = commonCount * (double)Option.OptionPage.SimilarityType.Low / 10;
+                }
+            }
+            if (minSimilarity < 1) {
+                minSimilarity = 1;
+            }
+            return minSimilarity;
         }
     }
 }

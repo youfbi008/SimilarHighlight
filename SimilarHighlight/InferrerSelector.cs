@@ -10,24 +10,29 @@ using Code2Xml.Core.Location;
 using Paraiba.Collections.Generic;
 using Paraiba.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace SimilarHighlight
 {
     public static class InferrerSelector
     {
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, XElement root, int treeType)
+                IEnumerable<LocationInfo> locations, XElement root, int treeType, ref ISet<string> nodeNames)
         {
             try
             {
                 if (treeType == 0) {
                     return CstInferrer.GetSimilarElements(locations,
-                            root);
+                            root, ref nodeNames);
                 }
                 else if (treeType == 1) {
                     return AstInferrer.GetSimilarElements(locations,
-                            root);
+                            root, ref nodeNames);
                 }
+            }
+            catch (ThreadAbortException tae)
+            {
+                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[GetSimilarElements method]");
             }
             catch (Exception exc)
             {

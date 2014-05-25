@@ -30,9 +30,9 @@ namespace SimilarHighlight.Option
         private SimilarityType similarityLevel = SimilarityType.High;
         public enum SimilarityType
         {
-            High = 6,
-            Stardard = 5,
-            Low = 4
+            High = 9,
+            Stardard = 8,
+            Low = 7
         }
 
         [Category("Highlight Settings")]
