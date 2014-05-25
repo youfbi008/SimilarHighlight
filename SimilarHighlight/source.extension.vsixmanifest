@@ -3,9 +3,11 @@
 	<Metadata>
 		<Identity Id="SimilarHighlight.Microsoft.1747f18e-0b0e-45b2-9a06-7348a55e3dc7" Version="0.95" Language="en-US" Publisher="Yujiang YANG" />
 		<DisplayName>SimilarHighlight</DisplayName>
-		<Description xml:space="preserve">Highlight all similar elements by selecting text twice. Then the current cursor can be moved onto other element of the similar elements by shortcuts.</Description>
+		<Description xml:space="preserve">Highlight all similar elements by selecting different texts. Then the current cursor can be moved on to another element of the similar elements by shortcut keys.
+</Description>
 		<Icon>ICONsnapshot.png</Icon>
 		<PreviewImage>ICONsnapshot.png</PreviewImage>
+		<Tags>Highlight, Visual Studio 2012, Inferrer, Similar elements, C#, Java</Tags>
 	</Metadata>
 	<Installation>
 		<InstallationTarget Id="Microsoft.VisualStudio.Pro" Version="11.0" />
