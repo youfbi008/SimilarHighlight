@@ -15,8 +15,8 @@ Then you can change the current selected element by selecting marks in the margi
 5.In `Tools -> Options -> SimilarHighlight`, you can change some settings or disable some functions.
 And in `Fonts and Color -> SimilarHighlight`, you can change the highlighting colors".
 
-This tool has been published on http://goo.gl/KqtTvY. I would really appreciate any feedback.  
-This is a introductory video on YouTube. http://youtu.be/6MBXuqFHS2w  (I will update this video.)  
+This tool has been published on http://goo.gl/KqtTvY. We would really appreciate any feedback.  
+This is a introductory video on YouTube. http://youtu.be/6MBXuqFHS2w  (We will update this video.)  
 
 Shortcut Keys:
 * `Ctrl + Alt + ->` to make the next similar element selected.  
@@ -29,7 +29,7 @@ Shortcut Keys:
 * C#(.cs)  
 * JAVA(.java)  
 * JavaScript(.js)  
-※The operations in the next languages will not be perfect. I will fix them in future.
+※The operations in the next languages will not be perfect. We will fix them in future.
 * Python(.py)  
 * Ruby(.rb)  
 * Cobol(.cbl) Now some elements can be highlighted. You can test it use CobolTest.CBL.  

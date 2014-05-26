@@ -150,12 +150,12 @@ namespace SimilarHighlight
                             this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.CSharp.CSharpCstGeneratorUsingAntlr3();
                             break;
                         // TODO: ExternalGenerators will be fixed in future.
-                        case ".PY": //TODO: python 2 and 3 has the same extension that is "py".
-                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Python.Python2CstGenerator();
-                            break;
-                        case ".RB": //TODO: ruby 18, 19, 20 has the same extension that is "rb".
-                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Ruby.Ruby18AstGenerator();
-                            break;
+                        //case ".PY": //TODO: python 2 and 3 has the same extension that is "py".
+                        //    this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Python.Python2CstGenerator();
+                        //    break;
+                        //case ".RB": //TODO: ruby 18, 19, 20 has the same extension that is "rb".
+                        //    this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Ruby.Ruby18AstGenerator();
+                        //    break;
                         case ".CBL":
                             this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Cobol.Cobol85CstGenerator();
                             break;
