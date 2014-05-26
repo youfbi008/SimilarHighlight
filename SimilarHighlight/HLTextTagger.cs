@@ -95,9 +95,6 @@ namespace SimilarHighlight
    //     List<XElement> TokenElements { get; set; }
         // Whether the shift key is pressed.
         private bool IsShiftDown = false;
-
-        private bool IsMouseDown = false;
-        private bool IsMouseMove = false;
         // Whether the similar elements are needed to fix.
         private bool IsNeedFix { get; set; }
         // the regex wheather need fix
@@ -202,8 +199,7 @@ namespace SimilarHighlight
                                     MarginElement.CurFileName = FileName;
                                     MarginElement.TextTaggerElement = this;
                                 }
-                                View.VisualElement.PreviewMouseLeftButtonDown += VisualElement_PreviewMouseLeftButtonDown;
-                                View.VisualElement.PreviewMouseMove += VisualElement_PreviewMouseMove;
+
                                 //Hook up to the various events we need to keep the caret margin current.
                                 View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;
                                 View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
@@ -226,8 +222,6 @@ namespace SimilarHighlight
                                     tempEvent(this, new SnapshotSpanEventArgs(new SnapshotSpan(
                                         SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
                                 }
-
-                                View.VisualElement.PreviewMouseMove -= VisualElement_PreviewMouseMove;
                                 View.VisualElement.PreviewMouseLeftButtonUp -= VisualElement_PreviewMouseLeftButtonUp;
                                 View.VisualElement.PreviewKeyDown -= VisualElement_PreviewKeyDown;
                                 View.VisualElement.PreviewKeyUp -= VisualElement_PreviewKeyUp;
@@ -239,30 +233,6 @@ namespace SimilarHighlight
             catch (Exception exc)
             {
                 OutputMsgForExc(exc.ToString());
-            }
-        }
-
-        void VisualElement_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (OptionPage.Enabled == false) return;
-
-            if (e.ClickCount == 1)
-            {
-                IsMouseDown = true;
-            }
-            else {
-                IsMouseDown = false;
-            }
-        }
-
-        void VisualElement_PreviewMouseMove(object sender, MouseEventArgs e)
-        {
-            if (IsMouseDown)
-            {
-                IsMouseMove = true;
-            }
-            else {
-                IsMouseDown = false;
             }
         }
 
@@ -377,32 +347,25 @@ namespace SimilarHighlight
         {
             if (OptionPage.Enabled == false) return;
 
-            var DoHighlight = false;
-            if (e.ClickCount == 2)
+            // Except when search text by Quick Find window.
+            if (e.Device.Target.ToString() != "System.Windows.Controls.Button") 
+                //e.Device.Target.ToString() == "System.Windows.Controls.Canvas" ||
+                //e.Device.Target.ToString() == "Microsoft.VisualStudio.Text.Editor.Implementation.WpfTextView"
             {
                 RequestSelection = Document.Selection;
-                DoHighlight = true;
-            }
-            else if(IsMouseMove && IsMouseDown)
-            {
-                RequestSelection = Document.Selection;
-                DoHighlight = true;
-                IsMouseDown = false;
-                IsMouseMove = false;
-            }
-
-            if (DoHighlight)
-            {
-                if (OptionPage.MarginEnabled)
+                if (RequestSelection.Text.Trim() != "")//DoHighlight && 
                 {
-                    //IsChecked = true;
-                    MarginElement.SetCurrentPoint(
-                        ConvertToPosition(RequestSelection.TopPoint));
+                    if (OptionPage.MarginEnabled)
+                    {
+                        //IsChecked = true;
+                        MarginElement.SetCurrentPoint(
+                            ConvertToPosition(RequestSelection.TopPoint));
+                    }
+                    // Output the selection logs.
+                    OutputSelectionLogs(RequestSelection);
+                    // Highlight by background thread.
+                    ThreadStartHighlighting();
                 }
-                // Output the selection logs.
-                OutputSelectionLogs(RequestSelection);
-                // Highlight by background thread.
-                ThreadStartHighlighting();
             }
         }
 
