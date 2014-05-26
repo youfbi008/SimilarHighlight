@@ -95,6 +95,9 @@ namespace SimilarHighlight
    //     List<XElement> TokenElements { get; set; }
         // Whether the shift key is pressed.
         private bool IsShiftDown = false;
+
+        private bool IsMouseDown = false;
+        private bool IsMouseMove = false;
         // Whether the similar elements are needed to fix.
         private bool IsNeedFix { get; set; }
         // the regex wheather need fix
@@ -199,7 +202,8 @@ namespace SimilarHighlight
                                     MarginElement.CurFileName = FileName;
                                     MarginElement.TextTaggerElement = this;
                                 }
-                                
+                                View.VisualElement.PreviewMouseLeftButtonDown += VisualElement_PreviewMouseLeftButtonDown;
+                                View.VisualElement.PreviewMouseMove += VisualElement_PreviewMouseMove;
                                 //Hook up to the various events we need to keep the caret margin current.
                                 View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;
                                 View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
@@ -223,6 +227,7 @@ namespace SimilarHighlight
                                         SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
                                 }
 
+                                View.VisualElement.PreviewMouseMove -= VisualElement_PreviewMouseMove;
                                 View.VisualElement.PreviewMouseLeftButtonUp -= VisualElement_PreviewMouseLeftButtonUp;
                                 View.VisualElement.PreviewKeyDown -= VisualElement_PreviewKeyDown;
                                 View.VisualElement.PreviewKeyUp -= VisualElement_PreviewKeyUp;
@@ -237,18 +242,32 @@ namespace SimilarHighlight
             }
         }
 
+        void VisualElement_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (OptionPage.Enabled == false) return;
+
+            if (e.ClickCount == 1)
+            {
+                IsMouseDown = true;
+            }
+            else {
+                IsMouseDown = false;
+            }
+        }
+
+        void VisualElement_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (IsMouseDown)
+            {
+                IsMouseMove = true;
+            }
+            else {
+                IsMouseDown = false;
+            }
+        }
+
         private void ViewLayoutChanged(object sender, TextViewLayoutChangedEventArgs e)
         {
-            //foreach (var item in Document.Collection)
-            //{
-            //  var doc = item as EnvDTE.Document;
-            //  var name = doc.FullName;
-            //    //if (name == textDocument.FilePath)
-            //    //{
-            //    //    nowDocument = doc;
-            //    //    break;
-            //    //}
-            //}
             // If a new snapshot wasn't generated, then skip this layout
             if (e.NewViewState.EditSnapshot != e.OldViewState.EditSnapshot)
             {
@@ -286,6 +305,7 @@ namespace SimilarHighlight
 
         void VisualElement_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (OptionPage.Enabled == false) return;
             // When the shift key is pressed, maybe the select operation is going to happens.
             if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift)
                 || e.Key == Key.LeftShift || e.Key == Key.RightShift)
@@ -297,6 +317,7 @@ namespace SimilarHighlight
 
         void VisualElement_PreviewKeyUp(object sender, KeyEventArgs e)
         {
+            if (OptionPage.Enabled == false) return;
             if (Keyboard.IsKeyDown(Key.LeftCtrl) && Keyboard.IsKeyDown(Key.LeftAlt))
             {
                 if (TmpWordSpans != null && TmpWordSpans.Count() == 0)
@@ -352,24 +373,25 @@ namespace SimilarHighlight
             }
         }
 
-        //public static void SetMargin(SimilarMarginElement marginElement) {
-        //    MarginElement = marginElement;
-        //}
-
         void VisualElement_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (OptionPage.Enabled == false) return;
 
+            var DoHighlight = false;
             if (e.ClickCount == 2)
             {
                 RequestSelection = Document.Selection;
+                DoHighlight = true;
             }
-            else
+            else if(IsMouseMove && IsMouseDown)
             {
                 RequestSelection = Document.Selection;
+                DoHighlight = true;
+                IsMouseDown = false;
+                IsMouseMove = false;
             }
 
-            if (RequestSelection.Text.Trim() != "")
+            if (DoHighlight)
             {
                 if (OptionPage.MarginEnabled)
                 {
@@ -607,10 +629,10 @@ namespace SimilarHighlight
                     }
                 }
 
-                NormalizedSnapshotSpanCollection wordSpan = new NormalizedSnapshotSpanCollection(NewSpanAll);
+                NormalizedSnapshotSpanCollection newWordSpans = new NormalizedSnapshotSpanCollection(NewSpanAll);
 
                 // TODO if the elements of a line is bigger than 1, the position need to fix.
-                var curSelection = wordSpan.AsParallel().Select((item, index) => new { Item = item, Index = index })
+                var curSelection = newWordSpans.AsParallel().Select((item, index) => new { Item = item, Index = index })
                         .FirstOrDefault(sel => (sel.Item.Start <= currentStart &&
                         sel.Item.End >= currentEnd));
 
@@ -623,7 +645,7 @@ namespace SimilarHighlight
                 
                 // If another change hasn't happened, do a real update
                 if (currentSelection == RequestSelection)
-                    SynchronousUpdate(currentSelection, wordSpan, CurrentWordForCheck);
+                    SynchronousUpdate(currentSelection, newWordSpans, CurrentWordForCheck);
             }
             catch (ThreadAbortException tae)
             {
@@ -653,13 +675,13 @@ namespace SimilarHighlight
             int linenum = this.View.TextSnapshot.GetLineNumberFromPosition(currentPoint.Position);
             try
             {
-                var curSelection = wordSpan.Select((item, index) => new { Item = item, Index = index })
+                var curSelection = TmpWordSpans.Select((item, index) => new { Item = item, Index = index })
                         .FirstOrDefault(sel => (View.TextSnapshot.GetLineNumberFromPosition(sel.Item.Start.Position) == linenum));
                 if (curSelection != null)
                 {
                     CurrentSelectNum = curSelection.Index;
                     TMPCurrentSelectNum = CurrentSelectNum;
-                    var newSpan = wordSpan.ElementAt(CurrentSelectNum);
+                    var newSpan = TmpWordSpans.ElementAt(CurrentSelectNum);
                     var newStartOffset = ConvertToCharOffset(newSpan.Start);
                     Document.Selection.MoveToAbsoluteOffset(newStartOffset, false);
                     Document.Selection.MoveToAbsoluteOffset(newStartOffset + newSpan.Length, true);

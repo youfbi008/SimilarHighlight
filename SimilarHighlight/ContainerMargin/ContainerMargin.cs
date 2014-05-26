@@ -61,10 +61,6 @@ namespace SimilarHighlight.ContainerMargin
             base.Background = Brushes.Transparent;
             base.ClipToBounds = true;
 
-            {
-                var viewRoles = this.TextViewHost.TextView.Roles;
-            }
-
 //            base.TextViewHost.TextView.Options.OptionChanged += this.OnOptionsChanged;
         }
 
