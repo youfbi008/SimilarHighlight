@@ -390,6 +390,10 @@ namespace SimilarHighlight
                     //       TokenElements = RootElement.Descendants("TOKEN").ToList();
                 }
             }
+            catch (ThreadAbortException tae)
+            {
+                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[GetRootElement method]");
+            }
             catch (Exception exc)
             {
                 OutputMsgForExc(exc.ToString());
