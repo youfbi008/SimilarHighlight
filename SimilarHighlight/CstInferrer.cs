@@ -169,20 +169,20 @@ namespace SimilarHighlight
         }
 
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, XElement root, ref ISet<string> nodeNames,
+                IEnumerable<LocationInfo> locations, CstNode rootNode, ref ISet<string> nodeNames,
                 int range = 5, bool inner = true, bool outer = true)
         {
             try
             {
-                // Convert the location informatoin (CodeRange) to the node (XElement) in the ASTs
+                // Convert the location informatoin (CodeRange) to the node (XElement) in the CSTs
                 var elements = new List<CstNode>();
 
                 foreach (var location in locations)
                 {
-                    elements.Add(CstNode.FromXml(location.XElement));
+                    elements.Add(location.CstNode);
                 }
 
-                // Determine the node names to extract candidate nodes from the ASTs
+                // Determine the node names to extract candidate nodes from the CSTs
                 nodeNames = AdoptNodeNames(elements);
 
                 var names = nodeNames;
@@ -191,9 +191,8 @@ namespace SimilarHighlight
 
                 TimeWatch.Start();
 
-                CstNode node = CstNode.FromXml(root);
                 candidates.Add(
-                        node.Descendants().AsParallel()
+                        rootNode.Descendants().AsParallel()
                                 .Where(e => names.Contains(e.Name)).ToList());
 
                 // Extract common surrounding nodes from the selected elements.

@@ -34,7 +34,7 @@ namespace SimilarHighlight
 {
     public struct LocationInfo
     {
-        public XElement XElement;
+        public CstNode CstNode;
         public CodeRange CodeRange;
         public bool IsNeedFix;
     }
@@ -86,11 +86,11 @@ namespace SimilarHighlight
         private SnapshotSpan CurrentWordForCheck { get; set; }
 
         // the SyntaxTreeGenerator of the current editor
-        private SyntaxTreeGenerator SyntaxTreeGenerator;
+        private CstGenerator TreeGenerator;
         // the source code of the current editor
         private string SourceCode { get; set; }
         // the root element of the source code
-        private XElement RootElement { get; set; }
+        private CstNode RootNode { get; set; }
         // the token list of the source code
    //     List<XElement> TokenElements { get; set; }
         // Whether the shift key is pressed.
@@ -129,25 +129,25 @@ namespace SimilarHighlight
                 MarginElement = null;
                 if (document == null)
                     return;
-                if (this.SyntaxTreeGenerator == null)
+                if (this.TreeGenerator == null)
                 {
                     hasSR = true;
                     switch (Path.GetExtension(document.FullName).ToUpper())
                     {
                         case ".C":
-                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.C.CCstGeneratorUsingAntlr3();
+                            this.TreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.C.CCstGeneratorUsingAntlr3();
                             break;
                         case ".PHP":
-                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.Php.PhpCstGeneratorUsingAntlr3();
+                            this.TreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.Php.PhpCstGeneratorUsingAntlr3();
                             break;
                         case ".JAVA":
-                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.Java.JavaCstGeneratorUsingAntlr3();
+                            this.TreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.Java.JavaCstGeneratorUsingAntlr3();
                             break;
                         case ".JS":
-                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.JavaScript.JavaScriptCstGeneratorUsingAntlr3();
+                            this.TreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.JavaScript.JavaScriptCstGeneratorUsingAntlr3();
                             break;                        
                         case ".CS":
-                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.CSharp.CSharpCstGeneratorUsingAntlr3();
+                            this.TreeGenerator = new Code2Xml.Languages.ANTLRv3.Generators.CSharp.CSharpCstGeneratorUsingAntlr3();
                             break;
                         // TODO: ExternalGenerators will be fixed in future.
                         //case ".PY": //TODO: python 2 and 3 has the same extension that is "py".
@@ -157,19 +157,19 @@ namespace SimilarHighlight
                         //    this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Ruby.Ruby18AstGenerator();
                         //    break;
                         case ".CBL":
-                            this.SyntaxTreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Cobol.Cobol85CstGenerator();
+                            this.TreeGenerator = new Code2Xml.Languages.ExternalGenerators.Generators.Cobol.Cobol85CstGenerator();
                             break;
                     }
 
-                    if (SyntaxTreeGenerator != null)
+                    if (this.TreeGenerator != null)
                     {
 
                         var currentTextDoc = document.Object("TextDocument");
                         SourceCode = currentTextDoc.StartPoint.CreateEditPoint().GetText(currentTextDoc.EndPoint);
                         // Check the line break type of the file.
-                        CheckLineBreakType();
+                        CheckLineBreakType(); 
                         Document = document;
-                        RootElement = SyntaxTreeGenerator.GenerateXmlFromCodeText(SourceCode, true);
+                        RootNode = TreeGenerator.GenerateTreeFromCodeText(SourceCode, true);
                         RegexNeedFix = new Regex("^\"(.*)\"$");
                         // the forward offset when fixing
                         startOffset = 1;
@@ -281,7 +281,7 @@ namespace SimilarHighlight
                 || e.Key == Key.LeftShift || e.Key == Key.RightShift)
             {
                 IsShiftDown = true;
-                GetRootElement();
+                GetRootNode();
             }
         }
 
@@ -369,7 +369,7 @@ namespace SimilarHighlight
             }
         }
 
-        void GetRootElement()
+        void GetRootNode()
         {
             try
             {
@@ -384,15 +384,15 @@ namespace SimilarHighlight
                     SourceCode = tmpSource;
                     TimeWatch.Start();
                     // If the converting errors, the exception will be catched.
-                    RootElement = SyntaxTreeGenerator.GenerateXmlFromCodeText(SourceCode, true);
+                    RootNode = TreeGenerator.GenerateTreeFromCodeText(SourceCode, true);
                     TimeWatch.Stop("GenerateXml");
 
-                    //       TokenElements = RootElement.Descendants("TOKEN").ToList();
+                    //       TokenElements = RootNode.Descendants("TOKEN").ToList();
                 }
             }
             catch (ThreadAbortException tae)
             {
-                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[GetRootElement method]");
+                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[GetRootNode method]");
             }
             catch (Exception exc)
             {
@@ -412,7 +412,7 @@ namespace SimilarHighlight
                     
                 // Get the current source code.
                 // Even the shift key is pressed down, the source code maybe edited.
-                GetRootElement();
+                GetRootNode();
                                 
                 CodeRange currentRange;
                 // Validation Check about selected range  and get the CodeRange 
@@ -423,18 +423,18 @@ namespace SimilarHighlight
 
                 var currentSelection = RequestSelection;
                 TimeWatch.Start();
-                var currentElement = currentRange.FindOutermostElement(RootElement);
+                var currentNode = currentRange.FindOutermostElement(RootNode);
                 TimeWatch.Stop("FindOutermostElement");
 
                 // The selected element is same with before.
-                if (!BuildLocationsFromTwoElements(currentRange, currentElement))
+                if (!BuildLocationsFromTwoElements(currentRange, currentNode))
                     return;
 
                 if (Locations.Count == 2)
                 {
                     // Get the similar Elements.
                     var ret = InferrerSelector.GetSimilarElements(Locations,
-                            RootElement, treeType, ref nodeNames);
+                            RootNode, treeType, ref nodeNames);
 
                     PaneLineCnt = RequestSelection.TextPane.Height;
                     TimeWatch.Start();
@@ -443,14 +443,14 @@ namespace SimilarHighlight
                     {
                         HaveSimilarElements = false;
                         // The element selected before current two element will be added to compare.
-                        if (PreLocationInfo.XElement != null)
+                        if (PreLocationInfo.CstNode != null)
                         {
                             var tmpLocationInfo = Locations[0];
                             Locations[0] = PreLocationInfo;
 
                             // Get the similar Elements.
                             ret = InferrerSelector.GetSimilarElements(Locations,
-                                    RootElement, treeType, ref nodeNames);
+                                    RootNode, treeType, ref nodeNames);
                             
                             // If no similar element is found then nothing will be highlighted.
                             if (ret.Count() == 0 || ret.First().Item1 == 0)
@@ -479,11 +479,11 @@ namespace SimilarHighlight
             }
         }
 
-        bool BuildLocationsFromTwoElements(CodeRange currentRange, XElement currentElement) {
+        bool BuildLocationsFromTwoElements(CodeRange currentRange, CstNode currentNode) {
 
             try
             {
-                if (Locations.Where(ln => ln.XElement == currentElement).Count() > 0)
+                if (Locations.Where(ln => ln.CstNode == currentNode).Count() > 0)
                 {
                     return false;
                 }
@@ -491,8 +491,8 @@ namespace SimilarHighlight
                 var tmpLocationInfo = new LocationInfo
                 {
                     CodeRange = currentRange,
-                    XElement = currentElement,
-                    IsNeedFix = NeedFixCheck(currentElement),
+                    CstNode = currentNode,
+                    IsNeedFix = NeedFixCheck(currentNode),
                 }; 
 
                 if (Locations.Count == 2 && HaveSimilarElements)
@@ -680,14 +680,13 @@ namespace SimilarHighlight
         // When the selected element does not contain the double quotation marks, 
         // but the token node contains them, 
         // the double quotation marks will be cutted when highlighting.
-        bool NeedFixCheck(XElement currentElement)
+        bool NeedFixCheck(CstNode currentNode)
         {
             try
             {
-                // When selected word is between double quotation marks.
-                var tokenElements = currentElement.DescendantsAndSelf().Where(el => el.IsToken()).ToList();
-                if (tokenElements.Count() == 1 && tokenElements[0].TokenText().Length != RequestSelection.Text.Length
-                        && RegexNeedFix.IsMatch(tokenElements[0].TokenText()))
+                // When selected word is between double quotation marks.;
+                if (currentNode.HasToken && currentNode.TokenText.Length != RequestSelection.Text.Length
+                        && RegexNeedFix.IsMatch(currentNode.TokenText))
                 {
                     return true;
                 }

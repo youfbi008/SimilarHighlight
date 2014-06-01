@@ -27,7 +27,7 @@ namespace SimilarHighlight.Tests
 			var processor = new Code2Xml.Languages.ANTLRv3.Generators.CSharp.CSharpCstGeneratorUsingAntlr3();	// processorIdentifier indicates here
 			var fileInfo = new FileInfo(path);					// fileInfoIdentifier indicates here
 			var code = File.ReadAllText(path);
-            var xml = processor.GenerateXmlFromCodeText(code, true);
+            var xml = processor.GenerateTreeFromCodeText(code, true);
 			var elements = xml.Descendants("identifier").ToList();
 
 			// Create locatoin information that user selects in the editor
@@ -41,15 +41,15 @@ namespace SimilarHighlight.Tests
 			// using CodeRange.ConvertFromIndicies()
 			//
 
-            var firstRange = CodeRange.Locate(elements.First(e => e.TokenText() == "processor"));
-            var secondRange = CodeRange.Locate(elements.First(e => e.TokenText() == "fileInfo"));
+            var firstRange = CodeRange.Locate(elements.First(e => e.TokenText == "processor"));
+            var secondRange = CodeRange.Locate(elements.First(e => e.TokenText == "fileInfo"));
 			var processorIdentifier = new LocationInfo {
                 CodeRange = firstRange,
-                XElement = firstRange.FindOutermostElement(xml),
+                CstNode = firstRange.FindOutermostElement(xml),
 			};
 			var fileInfoIdentifier = new LocationInfo {
                 CodeRange = secondRange,
-                XElement = secondRange.FindOutermostElement(xml),
+                CstNode = secondRange.FindOutermostElement(xml),
 			};
 
 			// Get similar nodes

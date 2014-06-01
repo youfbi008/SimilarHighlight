@@ -194,105 +194,105 @@ namespace SimilarHighlight
         }
 
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, XElement root, ref ISet<string> nodeNames,
+                IEnumerable<LocationInfo> locations, CstNode rootNode, ref ISet<string> nodeNames,
                 int range = 5, bool inner = true, bool outer = true)
         {
-            try
-            {
-                var similarityRange = 0;
+            //try
+            //{
+            //    var similarityRange = 0;
 
-                // Convert the location informatoin (CodeRange) to the node (XElement) in the ASTs
-                var elements = new List<AstNode>();
+            //    // Convert the location informatoin (CodeRange) to the node (XElement) in the ASTs
+            //    var elements = new List<AstNode>();
 
-                foreach (var location in locations)
-                {
-                    elements.Add(AstNode.FromXml(location.XElement));
-                }
+            //    foreach (var location in locations)
+            //    {
+            //        elements.Add(location.CstNode);
+            //    }
 
-                // Determine the node names to extract candidate nodes from the ASTs
-                nodeNames = AdoptNodeNames(elements);
+            //    // Determine the node names to extract candidate nodes from the ASTs
+            //    nodeNames = AdoptNodeNames(elements);
 
-                var names = nodeNames;
+            //    var names = nodeNames;
 
-                // Extract candidate nodes that has one of the determined names
-                var candidates = new List<IEnumerable<AstNode>>();
+            //    // Extract candidate nodes that has one of the determined names
+            //    var candidates = new List<IEnumerable<AstNode>>();
 
-                TimeWatch.Start();
+            //    TimeWatch.Start();
 
-                AstNode node = AstNode.FromXml(root);
-                candidates.Add(
-                        node.Descendants().AsParallel()
-                                .Where(e => names.Contains(e.Name)).ToList());
+            //    AstNode node = AstNode.FromXml(rootNode);
+            //    candidates.Add(
+            //            node.Descendants().AsParallel()
+            //                    .Where(e => names.Contains(e.Name)).ToList());
 
-                // Extract common surrounding nodes from the selected elements.
-                var commonKeys = elements.GetCommonKeys(range, true, true);
-                //int i = 0;
-                //foreach (var k in commonKeys)
-                //{
-                //    Debug.WriteLine("[" + i + "]:" + k); i++;
-                //}
-                TimeWatch.Stop("FindOutCandidateElements");
+            //    // Extract common surrounding nodes from the selected elements.
+            //    var commonKeys = elements.GetCommonKeys(range, true, true);
+            //    //int i = 0;
+            //    //foreach (var k in commonKeys)
+            //    //{
+            //    //    Debug.WriteLine("[" + i + "]:" + k); i++;
+            //    //}
+            //    TimeWatch.Stop("FindOutCandidateElements");
 
-                // Get the similarity range.
-                if (SimilarityRange == 0 && keysCount != 0)
-                {
-                    // TODO The better algorithm is expected.
-                    similarityRange = keysCount / 4;
-                }
-                else
-                {
-                    // If the similarity is setted.
-                    similarityRange = SimilarityRange;
-                }
+            //    // Get the similarity range.
+            //    if (SimilarityRange == 0 && keysCount != 0)
+            //    {
+            //        // TODO The better algorithm is expected.
+            //        similarityRange = keysCount / 4;
+            //    }
+            //    else
+            //    {
+            //        // If the similarity is setted.
+            //        similarityRange = SimilarityRange;
+            //    }
 
-                int minSimilarity = 0;
-                // If the similarity is too small. 
-                if (commonKeys.Count <= similarityRange)
-                {
-                    return Enumerable.Empty<Tuple<int, CodeRange>>();
-                }
+            //    int minSimilarity = 0;
+            //    // If the similarity is too small. 
+            //    if (commonKeys.Count <= similarityRange)
+            //    {
+            //        return Enumerable.Empty<Tuple<int, CodeRange>>();
+            //    }
 
-                // Get the similarity threshold.
-                minSimilarity = commonKeys.Count - similarityRange;
-                //}
-                //else
-                //{
-                //    minSimilarity = commonKeys.Count * 2 / 3;
-                //}
+            //    // Get the similarity threshold.
+            //    minSimilarity = commonKeys.Count - similarityRange;
+            //    //}
+            //    //else
+            //    //{
+            //    //    minSimilarity = commonKeys.Count * 2 / 3;
+            //    //}
 
-                TimeWatch.Start();
+            //    TimeWatch.Start();
 
-                // Get the similar nodes collection. 
-                var ret = candidates.AsParallel().SelectMany(
-                        kv =>
-                        {
-                            return kv.Select(
-                                    e => Tuple.Create(
-                                        // Count how many common surrounding nodes each candidate node has 
-                                        e.GetSurroundingKeys(range, inner, outer)
-                                            .Count(commonKeys.Contains),
-                                            e))
-                                // The candidate node will be taken as similar node 
-                                // when the number of common surrounding nodes is bigger than the similarity threshold.
-                                     .Where(e => e.Item1 > minSimilarity
-                                     )
-                                     .Select(
-                                            t => Tuple.Create(
-                                                    t.Item1,	// Indicates the simlarity
-                                                    CodeRange.Nil
-                                              //      CodeRange.Locate(t.Item2) TODO: this will be fixed in future.
-                                                    ));
-                        })
-                        // Sort candidate nodes using the similarities
-                        .OrderByDescending(t => t.Item1).ToList();
+            //    // Get the similar nodes collection. 
+            //    var ret = candidates.AsParallel().SelectMany(
+            //            kv =>
+            //            {
+            //                return kv.Select(
+            //                        e => Tuple.Create(
+            //                            // Count how many common surrounding nodes each candidate node has 
+            //                            e.GetSurroundingKeys(range, inner, outer)
+            //                                .Count(commonKeys.Contains),
+            //                                e))
+            //                    // The candidate node will be taken as similar node 
+            //                    // when the number of common surrounding nodes is bigger than the similarity threshold.
+            //                         .Where(e => e.Item1 > minSimilarity
+            //                         )
+            //                         .Select(
+            //                                t => Tuple.Create(
+            //                                        t.Item1,	// Indicates the simlarity
+            //                                        CodeRange.Nil
+            //                                  //      CodeRange.Locate(t.Item2) TODO: this will be fixed in future.
+            //                                        ));
+            //            })
+            //            // Sort candidate nodes using the similarities
+            //            .OrderByDescending(t => t.Item1).ToList();
 
-                TimeWatch.Stop("FindOutSimilarElements");
-                return ret;
-            }
-            catch (Exception exc)
-            {
-                HLTextTagger.OutputMsgForExc(exc.ToString());
-            }
+            //    TimeWatch.Stop("FindOutSimilarElements");
+            //    return ret;
+            //}
+            //catch (Exception exc)
+            //{
+            //    HLTextTagger.OutputMsgForExc(exc.ToString());
+            //}
             return null;
         }
     }
