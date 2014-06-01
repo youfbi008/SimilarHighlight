@@ -479,8 +479,8 @@ namespace SimilarHighlight
             }
         }
 
-        bool BuildLocationsFromTwoElements(CodeRange currentRange, CstNode currentNode) {
-
+        bool BuildLocationsFromTwoElements(CodeRange currentRange, CstNode currentNode) 
+        {
             try
             {
                 if (Locations.Where(ln => ln.CstNode == currentNode).Count() > 0)
@@ -685,7 +685,7 @@ namespace SimilarHighlight
             try
             {
                 // When selected word is between double quotation marks.;
-                if (currentNode.HasToken && currentNode.TokenText.Length != RequestSelection.Text.Length
+                if (currentNode.TokenText.Length != RequestSelection.Text.Length
                         && RegexNeedFix.IsMatch(currentNode.TokenText))
                 {
                     return true;

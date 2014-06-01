@@ -132,10 +132,11 @@ namespace SimilarHighlight
             foreach (var element in elements) {
                 // Get the data collection of the surrounding nodes.
                 var keys = element.GetSurroundingKeys(length, inner, outer);
-                //int i = 0;
-                //foreach (var k in keys) {
-                //    Debug.WriteLine("[" + i + "]:" + k); i++;
-                //}
+                int i = 0;
+                foreach (var k in keys)
+                {
+                    Debug.WriteLine("[" + i + "]:" + k); i++;
+                }
 
                 // Accumulate the number of the surrounding nodes.
             //    keysCount += keys.Count();
