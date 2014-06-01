@@ -68,7 +68,6 @@ namespace SimilarHighlight
                     descendantStr = descendantStr + "<" + e.NameWithId();
                     ret.Add(descendantStr);
                 }
-                // 自分自身の位置による区別も考慮する
                 ret.Add(node.NameOrTokenWithId());
                 for (; i <= length; i++)
                 {
@@ -79,27 +78,14 @@ namespace SimilarHighlight
                         {
                             var key = t.Item2 + ">" + e.NameOrTokenWithId();
                             newChildElements.Add(Tuple.Create(e, key));
-                            // トークンが存在するかチェックする弱い条件
-                            // for Preconditions.checkArguments()
                             ret.Add(t.Item2 + ">'" + e.TokenText + "'");
                         }
-                        //foreach (var e in t.Item1.Descendants())
-                        //{
-                        //    // トークンが存在するかチェックする弱い条件
-                        //    //ret.Add(t.Item2 + ">>'" + e.TokenText() + "'");
-                        //}
                     }
                     foreach (var e in parentElement.Item1.Siblings(10))
                     {
                         var key = parentElement.Item2 + "-" + e.NameOrTokenWithId();
                         newChildElements.Add(Tuple.Create(e, key));
-                        // トークンが存在するかチェックする弱い条件
-                        // for Preconditions.checkArguments()
                         ret.Add(parentElement.Item2 + "-'" + e.TokenText + "'");
-                        //// 先祖に存在するかチェックする弱い条件
-                        //var iLastName = parentElement.Item2.LastIndexOf("<");
-                        //var weakKey = "<<" + parentElement.Item2.Substring(iLastName + 1) + "-" + e.NameOrTokenWithId();
-                        //newChildElements.Add(Tuple.Create(e, weakKey));
                     }
                     ret.UnionWith(newChildElements.Select(t => t.Item2));
                     childElements = newChildElements;
@@ -128,8 +114,6 @@ namespace SimilarHighlight
                     {
                         var key = t.Item2 + ">" + e.NameOrTokenWithId();
                         newChildElements.Add(Tuple.Create(e, key));
-                        // トークンが存在するかチェックする弱い条件
-                        // for Preconditions.checkArguments()
                         ret.Add(t.Item2 + ">'" + e.TokenText + "'");
                     }
                 }
@@ -148,10 +132,10 @@ namespace SimilarHighlight
             foreach (var element in elements) {
                 // Get the data collection of the surrounding nodes.
                 var keys = element.GetSurroundingKeys(length, inner, outer);
-                int i = 0;
-                foreach (var k in keys) {
-                    Debug.WriteLine("[" + i + "]:" + k); i++;
-                }
+                //int i = 0;
+                //foreach (var k in keys) {
+                //    Debug.WriteLine("[" + i + "]:" + k); i++;
+                //}
 
                 // Accumulate the number of the surrounding nodes.
             //    keysCount += keys.Count();
