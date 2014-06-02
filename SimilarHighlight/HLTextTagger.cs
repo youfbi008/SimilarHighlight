@@ -91,6 +91,7 @@ namespace SimilarHighlight
         private string SourceCode { get; set; }
         // the root element of the source code
         private CstNode RootNode { get; set; }
+        private bool HasParseException = false;
         // the token list of the source code
    //     List<XElement> TokenElements { get; set; }
         // Whether the shift key is pressed.
@@ -169,7 +170,7 @@ namespace SimilarHighlight
                         // Check the line break type of the file.
                         CheckLineBreakType(); 
                         Document = document;
-                        RootNode = TreeGenerator.GenerateTreeFromCodeText(SourceCode, true);
+                        RootNode = TreeGenerator.GenerateTreeFromCodeText(SourceCode, false);
                         RegexNeedFix = new Regex("^\"(.*)\"$");
                         // the forward offset when fixing
                         startOffset = 1;
@@ -229,6 +230,12 @@ namespace SimilarHighlight
                         };
                     }
                 }
+            }
+            catch (Code2Xml.Core.Generators.ParseException pe)
+            {
+                HasParseException = true;
+                OutputMsgForExc("SimilarHighlight is temporary invalid because of a ParseException, " +
+                                "that is likely from some serious format errors such as the lack of braces. Please fix them to use the tool.");
             }
             catch (Exception exc)
             {
@@ -379,20 +386,26 @@ namespace SimilarHighlight
 
                 TimeWatch.Init();
                 // If the source code was changed, the new one must be used in the next processing.
-                if (SourceCode == null || SourceCode != tmpSource)
+                if (SourceCode == null || SourceCode != tmpSource || HasParseException)
                 {
                     SourceCode = tmpSource;
                     TimeWatch.Start();
                     // If the converting errors, the exception will be catched.
-                    RootNode = TreeGenerator.GenerateTreeFromCodeText(SourceCode, true);
+                    RootNode = TreeGenerator.GenerateTreeFromCodeText(SourceCode, false);
                     TimeWatch.Stop("GenerateXml");
-
+                    HasParseException = false;
                     //       TokenElements = RootNode.Descendants("TOKEN").ToList();
                 }
             }
             catch (ThreadAbortException tae)
             {
-                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[GetRootNode method]");
+                OutputMsgForExc("Background thread of highlighting is stopping.[GetRootNode method]");
+            }
+            catch (Code2Xml.Core.Generators.ParseException pe)
+            {
+                HasParseException = true;
+                OutputMsgForExc("SimilarHighlight is temporary invalid because of a ParseException, " +
+                                "that is likely from some serious format errors such as the lack of braces. Please fix them to use the tool.");
             }
             catch (Exception exc)
             {
@@ -471,7 +484,12 @@ namespace SimilarHighlight
             }
             catch (ThreadAbortException tae)
             {
-                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[HighlightSimilarElements method]");
+                OutputMsgForExc("Background thread of highlighting is stopping.[HighlightSimilarElements method]");
+            }
+            catch (NullReferenceException nre)
+            {
+                OutputMsgForExc("SimilarHighlight is temporary invalid because of a ParseException, " +
+                                "that is likely from some serious format errors such as the lack of braces. Please fix them to use the tool.");
             }
             catch (Exception exc)
             {
@@ -514,7 +532,7 @@ namespace SimilarHighlight
             }
             catch (ThreadAbortException tae)
             {
-                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[BuildLocationsFromTwoElements method]");
+                OutputMsgForExc("Background thread of highlighting is stopping.[BuildLocationsFromTwoElements method]");
             }
             catch (Exception exc)
             {
@@ -616,7 +634,7 @@ namespace SimilarHighlight
             }
             catch (ThreadAbortException tae)
             {
-                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[Highlight method]");
+                OutputMsgForExc("Background thread of highlighting is stopping.[Highlight method]");
             }
             catch (Exception exc)
             {
@@ -629,6 +647,7 @@ namespace SimilarHighlight
             OutputMsg("=================================Start:" + highlightNo + "==============================");
 
             var outputDataList = OutputDatas.OrderByDescending(t => t.Item1).ToList();
+            OutputMsg("The max similarity is " + outputDataList[0].Item1 + "."); 
             outputDataList.ForEach(t => OutputSimilarElementData(t)); // To guarantee the outputing on the order. I give up "AsParallel().AsOrdered()".
             OutputDatas.Clear();
             outputDataList.Clear();
@@ -661,7 +680,7 @@ namespace SimilarHighlight
             }
             catch (ThreadAbortException tae)
             {
-                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[SetCurrentScrollPointLine method]");
+                OutputMsgForExc("Background thread of highlighting is stopping.[SetCurrentScrollPointLine method]");
             }
             catch (Exception exc)
             {
@@ -785,7 +804,7 @@ namespace SimilarHighlight
             }
             catch (ThreadAbortException tae)
             {
-                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[BuildSimilarElementsCollection method]");
+                OutputMsgForExc("Background thread of highlighting is stopping.[BuildSimilarElementsCollection method]");
             }
             catch (Exception exc)
             {
@@ -852,7 +871,7 @@ namespace SimilarHighlight
                 }
                 catch (ThreadAbortException tae)
                 {
-                    HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[SynchronousUpdate method]");
+                    OutputMsgForExc("Background thread of highlighting is stopping.[SynchronousUpdate method]");
                 }
                 catch (Exception exc)
                 {
@@ -893,7 +912,7 @@ namespace SimilarHighlight
             }
             catch (ThreadAbortException tae)
             {
-                HLTextTagger.OutputMsgForExc("Background thread of highlighting is stopping.[GetTags method]");
+                OutputMsgForExc("Background thread of highlighting is stopping.[GetTags method]");
             }
             catch (Exception exc)
             {

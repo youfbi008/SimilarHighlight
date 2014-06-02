@@ -132,11 +132,10 @@ namespace SimilarHighlight
             foreach (var element in elements) {
                 // Get the data collection of the surrounding nodes.
                 var keys = element.GetSurroundingKeys(length, inner, outer);
-                int i = 0;
-                foreach (var k in keys)
-                {
-                    Debug.WriteLine("[" + i + "]:" + k); i++;
-                }
+                //int i = 0;
+                //foreach (var k in keys) {
+                //    Debug.WriteLine("[" + i + "]:" + k); i++;
+                //}
 
                 // Accumulate the number of the surrounding nodes.
             //    keysCount += keys.Count();
@@ -214,8 +213,35 @@ namespace SimilarHighlight
 
                 if (names.Contains("element_initializer")) {
                     var retArray = candidates.GetOtherSimilars(commonKeys);
+                    var retOthers = new List<Tuple<int, CodeRange>>();
+                    // To extract the current Array by comparaison siblings of the first node in each array with selected elements.
+                    foreach (var e in retArray)
+                    {
+                        var cnt = e.Item2.Siblings().Count(elements.Contains);
+                        if (cnt >= 2)
+                        {
+                            retOthers.Add(Tuple.Create(
+                                                    e.Item1,	// Indicates the simlarity
+                                                    CodeRange.Locate(e.Item2)
+                                                    )
+                                         );
+                            break;
+                        }
+                        else if (cnt >= 1)
+                        {
+                            retOthers.Add(Tuple.Create(
+                                                    e.Item1,	// Indicates the simlarity
+                                                    CodeRange.Locate(e.Item2)
+                                                    )
+                                         );
+                            continue;
+                        }
+                    }
 
-                    ret = ret.Concat(retArray).ToList();
+                    if (retOthers.Count > 0)
+                    {
+                        ret = ret.Concat(retOthers).ToList();
+                    }
                 }
 
                 TimeWatch.Stop("FindOutSimilarElements");
@@ -259,27 +285,19 @@ namespace SimilarHighlight
                         .ToList();//.ToList()
         }
 
-        private static IEnumerable<Tuple<int, CodeRange>> GetOtherSimilars(this List<IEnumerable<CstNode>> candidates,
+        private static IEnumerable<Tuple<int, CstNode>> GetOtherSimilars(this List<IEnumerable<CstNode>> candidates,
             HashSet<string> commonKeys, int range = 5, bool inner = true, bool outer = true)
         {
             return candidates.AsParallel().SelectMany(
                         kv =>
                         {
-                            return kv.Select(
-                                    e => Tuple.Create(
-                                        // Count how many common surrounding nodes each candidate node has 
-                                        e.GetSurroundingKeys(range, inner, outer)
-                                            .Count(commonKeys.Contains),
-                                            e))
-                                // The candidate node will be taken as similar node 
-                                // when the number of common surrounding nodes is bigger than the similarity threshold.
-                                     .Where(e => e.Item2.RuleId == "334"
-                                     )
+                            return kv.Where(e => e.RuleId == "334")
                                      .Select(
-                                            t => Tuple.Create(
-                                                    t.Item1,	// Indicates the simlarity
-                                                    CodeRange.Locate(t.Item2)
-                                                    ));
+                                        e => Tuple.Create(
+                                            // Count how many common surrounding nodes each candidate node has 
+                                            e.GetSurroundingKeys(range, inner, outer)
+                                                .Count(commonKeys.Contains),
+                                                e));
                         })
                 // Sort candidate nodes using the similarities
                 //.OrderByDescending(t => t.Item1)
