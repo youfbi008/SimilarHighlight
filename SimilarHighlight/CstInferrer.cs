@@ -204,7 +204,7 @@ namespace SimilarHighlight
                 //}
                 TimeWatch.Stop("FindOutCandidateElements");
 
-                var minSimilarity = GetMinSimilarity((double)commonKeys.Count);
+                var minSimilarity = GetMinSimilarity((double)commonKeys.Count, names);
 
                 TimeWatch.Start();
 
@@ -304,7 +304,7 @@ namespace SimilarHighlight
                         .ToList();//
         }
 
-        private static double GetMinSimilarity(double commonCount)
+        private static double GetMinSimilarity(double commonCount, ISet<string> names)
         {
             double minSimilarity = 0;
             if (commonCount <= 5)
@@ -330,7 +330,14 @@ namespace SimilarHighlight
                         minSimilarity = commonCount - 1;
                     }
                     else {
-                        minSimilarity = commonCount * (double)Option.OptionPage.SimilarityType.High / 10;
+                        if (names.Contains("element_initializer"))
+                        {
+                            minSimilarity = commonCount * (double)Option.OptionPage.SimilarityType.Low / 10;
+                        }
+                        else
+                        {
+                            minSimilarity = commonCount * (double)Option.OptionPage.SimilarityType.High / 10;
+                        }
                     }
                 }
                 else if (HLTextTagger.OptionPage.SimilarityLevel == Option.OptionPage.SimilarityType.Stardard)
