@@ -5,8 +5,8 @@
 
 SimilarHighlight is a simple extension by the Managed Extensibility Framework.  
 
-1.Highlight all similar elements by selecting different texts.  
-2.The current cursor can be move on to another element of the similar elements by shortcut keys.  
+1.Highlight all similar elements of last selected elements.  
+2.The previous or next similar element can be found by shortcut keys quickly, and the whole text of it will be selected for easy to modify.  
 
 The optional functions:  
 3.A margin will be added on the right side of the editor, offer relative position marks about similar elements.
@@ -30,8 +30,6 @@ Shortcut Keys:
 * JAVA(.java)  
 * JavaScript(.js)  
 ※The operations in the next languages will not be perfect. We will fix them in future.
-* Python(.py)  
-* Ruby(.rb)  
 * Cobol(.cbl) Now some elements can be highlighted. You can test it use CobolTest.CBL.  
 
 # Requirements  
