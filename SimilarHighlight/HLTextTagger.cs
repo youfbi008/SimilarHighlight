@@ -119,11 +119,13 @@ namespace SimilarHighlight
         private bool m_disposed;
         public static List<Tuple<int, string, CodeRange>> OutputDatas = new List<Tuple<int, string, CodeRange>>();
         private SimilarMarginElement MarginElement { get; set; }
+
+        private Stopwatch testWatch;
         #endregion
 
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, EnvDTE.Document document,
             IOutputWindowPane outputWindow, IWpfTextViewMarginProvider similarMarginFactory,
-            OptionPage optionPage, IEditorFormatMap format)
+            OptionPage optionPage)
         {
             try
             {
@@ -294,7 +296,7 @@ namespace SimilarHighlight
 
         void VisualElement_PreviewKeyUp(object sender, KeyEventArgs e)
         {
-            if (OptionPage.Enabled == false) return;
+            if (OptionPage != null && OptionPage.Enabled == false) return;
             if (Keyboard.IsKeyDown(Key.LeftCtrl) && Keyboard.IsKeyDown(Key.LeftAlt))
             {
                 if (TmpWordSpans != null && TmpWordSpans.Count() == 0)
@@ -352,7 +354,7 @@ namespace SimilarHighlight
 
         void VisualElement_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (OptionPage.Enabled == false) return;
+            if (OptionPage != null && !OptionPage.MarginEnabled) return;
 
             // Except when search text by Quick Find window.
             if (e.Device.Target.ToString() != "System.Windows.Controls.Button") 
@@ -362,6 +364,8 @@ namespace SimilarHighlight
                 RequestSelection = Document.Selection;
                 if (RequestSelection.Text.Trim() != "")//DoHighlight && 
                 {
+                    testWatch = new Stopwatch();
+                    testWatch.Start();
                     if (OptionPage.MarginEnabled)
                     {
                         //IsChecked = true;
@@ -921,6 +925,13 @@ namespace SimilarHighlight
 
             if (blOverlapsWith) {
                 yield return new TagSpan<HLTextTag>(currentWord, new HLTextTag());
+            }
+
+            if (testWatch.IsRunning)
+            {
+                testWatch.Stop();
+
+                Debug.WriteLine("  (total cost " + (testWatch.ElapsedMilliseconds).ToString() + " seconds)");
             }
 
             // Second, yield all the other words in the file

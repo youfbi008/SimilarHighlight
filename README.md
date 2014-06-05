@@ -23,12 +23,13 @@ Shortcut Keys:
 * `Ctrl + Alt + <-` to make the previous similar element selected.  
 * `ESC` to make the highlighted elements return to normal.  
 
-# Supported Languages  
+# Supported Languages and Files  
 
 * C(.c)  
 * C#(.cs)  
 * JAVA(.java)  
 * JavaScript(.js)  
+* PHP(.php)  
 ※The operations in the next languages will not be perfect. We will fix them in future.
 * Cobol(.cbl) Now some elements can be highlighted. You can test it use CobolTest.CBL.  
 

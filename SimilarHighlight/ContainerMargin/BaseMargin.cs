@@ -124,7 +124,7 @@ namespace SimilarHighlight.ContainerMargin
 
         protected virtual void Initialize()
         {
-            if (! HLTextTagger.OptionPage.MarginEnabled) return;
+            if (HLTextTagger.OptionPage == null || ! HLTextTagger.OptionPage.MarginEnabled) return;
 
             this.TextViewHost.TextView.TextDataModel.ContentTypeChanged += OnContentTypeChanged;
 

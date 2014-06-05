@@ -48,7 +48,7 @@ namespace SimilarHighlight.ContainerMargin
         /// <returns>The newly created ContainerMargin.</returns>
         public IWpfTextViewMargin CreateMargin(IWpfTextViewHost textViewHost, IWpfTextViewMargin containerMargin)
         {
-            if (!HLTextTagger.OptionPage.MarginEnabled) return null;
+            if (HLTextTagger.OptionPage == null || !HLTextTagger.OptionPage.MarginEnabled) return null;
             return ContainerMargin.Create(textViewHost, containerMargin, this);
         }
     }

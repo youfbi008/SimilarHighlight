@@ -43,6 +43,7 @@ namespace SimilarHighlight
         [ImportingConstructor]
         public SimilarMarginElement(IWpfTextView textView, SimilarMarginFactory factory, IVerticalScrollBar verticalScrollbar)
         {
+            if (HLTextTagger.OptionPage == null) return;
             this.textView = textView;
             this.scrollBar = verticalScrollbar;
 

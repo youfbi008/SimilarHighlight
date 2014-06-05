@@ -46,8 +46,8 @@ namespace SimilarHighlight.ContainerMargin
         private ContainerMargin(IWpfTextViewHost textViewHost, IWpfTextViewMargin containerMargin, ContainerMarginProvider myProvider)
             : base(PredefinedContainerMargin.Container, Orientation.Vertical, textViewHost, myProvider.OrderedMarginProviders)
         {
+            if (HLTextTagger.OptionPage == null) return;
             _provider = myProvider;
-       //     SimilarMarginFactory = this.similarMarginFactory as SimilarMarginFactory;
 
             _outliningManager = myProvider.OutliningManagerService.GetOutliningManager(textViewHost.TextView);
 
@@ -123,6 +123,7 @@ namespace SimilarHighlight.ContainerMargin
             if (MarginElement == null)
                 MarginElement = base.SimilarMargin.similarMarginElement;
 
+            if (_scrollBar == null) return;
             base.TextViewHost.TextView.LayoutChanged += OnLayoutChanged;
             _scrollBar.TrackSpanChanged += OnTrackSpanChanged;
 
@@ -147,7 +148,7 @@ namespace SimilarHighlight.ContainerMargin
         protected override void UnregisterEvents()
         {
             base.UnregisterEvents();
-
+            if (_scrollBar == null) return;
             base.TextViewHost.TextView.LayoutChanged -= OnLayoutChanged;
             _scrollBar.TrackSpanChanged -= OnTrackSpanChanged;
 
