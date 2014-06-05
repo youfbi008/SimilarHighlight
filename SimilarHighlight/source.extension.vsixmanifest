@@ -3,8 +3,7 @@
 	<Metadata>
 		<Identity Id="SimilarHighlight.Microsoft.1747f18e-0b0e-45b2-9a06-7348a55e3dc7" Version="0.95" Language="en-US" Publisher="Yujiang YANG" />
 		<DisplayName>SimilarHighlight</DisplayName>
-		<Description xml:space="preserve">Highlight all similar elements of last selected elements. The previous or next similar element can be found by shortcut keys quickly, and the whole text of it will be selected for easy to modify.  
-</Description>
+		<Description xml:space="preserve">Highlight all similar elements of last selected elements. Move between highlighted similar elements by pressing CTRL+ALT+LEFT ARROW or CTRL+ALT+RIGHT ARROW.</Description>
 		<Icon>ICONsnapshot.png</Icon>
 		<PreviewImage>ICONsnapshot.png</PreviewImage>
 		<Tags>Highlight, Visual Studio 2012, Inferrer, Similar elements, C#, Java</Tags>

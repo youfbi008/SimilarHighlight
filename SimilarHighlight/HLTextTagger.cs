@@ -120,6 +120,7 @@ namespace SimilarHighlight
         public static List<Tuple<int, string, CodeRange>> OutputDatas = new List<Tuple<int, string, CodeRange>>();
         private SimilarMarginElement MarginElement { get; set; }
 
+        private string TimeCost;
         private Stopwatch testWatch;
         #endregion
 
@@ -646,16 +647,18 @@ namespace SimilarHighlight
             }
         }
 
-        private void OutputSimilarDatas() {
-
-            OutputMsg("=================================Start:" + highlightNo + "==============================");
-
+        private void OutputSimilarDatas()
+        {
             var outputDataList = OutputDatas.OrderByDescending(t => t.Item1).ToList();
-            OutputMsg("The max similarity is " + outputDataList[0].Item1 + "."); 
+            var cnt = outputDataList.Count;
+            OutputMsg("==================== Start:" + highlightNo + " ======= Count:" + cnt + " ==============================");
+
+            OutputMsg("Max Similarity: " + outputDataList[0].Item1 + "    Number of Similar Elements: " + cnt); 
             outputDataList.ForEach(t => OutputSimilarElementData(t)); // To guarantee the outputing on the order. I give up "AsParallel().AsOrdered()".
             OutputDatas.Clear();
             outputDataList.Clear();
-            OutputMsg("==================================End:" + highlightNo + "===============================");
+            System.Threading.Thread.Sleep(500);
+            OutputMsg("============ End:" + highlightNo + " ======= Count:" + cnt + " ============= Total cost:" + TimeCost + "ms =========");
         }
 
         public void SetCurrentScrollPointLine(SnapshotPoint currentPoint)
@@ -930,8 +933,9 @@ namespace SimilarHighlight
             if (testWatch.IsRunning)
             {
                 testWatch.Stop();
-
-                Debug.WriteLine("  (total cost " + (testWatch.ElapsedMilliseconds).ToString() + " seconds)");
+                var cost = (testWatch.ElapsedMilliseconds).ToString();
+                TimeCost = cost;
+                Debug.WriteLine("  (total cost " + cost + " seconds)");
             }
 
             // Second, yield all the other words in the file

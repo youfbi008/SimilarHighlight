@@ -75,6 +75,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="InferenceTest.cs" />
+    <Compile Include="Line1000.cs" />
+    <Compile Include="Line500.cs" />
+    <Compile Include="Line5000.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
