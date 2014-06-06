@@ -119,8 +119,8 @@ namespace SimilarHighlight
         private bool m_disposed;
         public static List<Tuple<int, string, CodeRange>> OutputDatas = new List<Tuple<int, string, CodeRange>>();
         private SimilarMarginElement MarginElement { get; set; }
-
-        private string TimeCost;
+        private Key[] ArrowKeys = new Key[6] { Key.Up, Key.Down, Key.Left, Key.Right, Key.Home, Key.End, };
+        private string TimeCost;       
         private Stopwatch testWatch;
         #endregion
 
@@ -286,17 +286,23 @@ namespace SimilarHighlight
         void VisualElement_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (OptionPage.Enabled == false) return;
+            RequestSelection = Document.Selection;
             // When the shift key is pressed, maybe the select operation is going to happens.
-            if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift)
-                || e.Key == Key.LeftShift || e.Key == Key.RightShift)
+            if ((Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift)
+                || e.Key == Key.LeftShift || e.Key == Key.RightShift) && RequestSelection.Text.Trim() != "")
             {
                 IsShiftDown = true;
                 GetRootNode();
+                //if (!ArrowKeys.Contains(e.Key)) {
+                //    int a = 1;
+                //}
+                //RequestSelection.
             }
         }
 
         void VisualElement_PreviewKeyUp(object sender, KeyEventArgs e)
         {
+            
             if (OptionPage != null && OptionPage.Enabled == false) return;
             if (Keyboard.IsKeyDown(Key.LeftCtrl) && Keyboard.IsKeyDown(Key.LeftAlt))
             {
@@ -339,18 +345,33 @@ namespace SimilarHighlight
                     }
                 }
             }
-            else if (IsShiftDown && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift))
+            else if ((IsShiftDown && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift)) ||
+                (e.Key == Key.LeftShift || e.Key == Key.RightShift))
             {
                 // When the select opeartion by keyboard is over.
-                RequestSelection = Document.Selection;
+      //          RequestSelection = Document.Selection;
                 var tmpTxt = RequestSelection.Text.Trim();
                 if (tmpTxt != "")
                 {
                     OutputSelectionLogs(RequestSelection);
                     // Highlight by background thread.
                     ThreadStartHighlighting();
+                    IsShiftDown = false;
                 }
-            }
+            } 
+            // If pressed key is not arrow key,  then the current selected text is not exist, to judge it difficult.
+            //else if (IsShiftDown && !ArrowKeys.Contains(e.Key))
+            //{
+            //    // When the select opeartion by keyboard is over.
+            //    var tmpTxt = RequestSelection.Text.Trim();
+            //    if (tmpTxt != "")
+            //    {
+            //        OutputSelectionLogs(RequestSelection);
+            //        // Highlight by background thread.
+            //        ThreadStartHighlighting();
+            //        IsShiftDown = false;
+            //    }
+            //}
         }
 
         void VisualElement_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -633,7 +654,7 @@ namespace SimilarHighlight
                     TMPCurrentSelectNum = CurrentSelectNum;
                 }
                 
-                // If another change hasn't happened, do a real update
+                // If another change hasn't happened, do a real update TODO:
                 if (currentSelection == RequestSelection)
                     SynchronousUpdate(currentSelection, newWordSpans, CurrentWordForCheck);
             }
@@ -930,7 +951,7 @@ namespace SimilarHighlight
                 yield return new TagSpan<HLTextTag>(currentWord, new HLTextTag());
             }
 
-            if (testWatch.IsRunning)
+            if (testWatch != null && testWatch.IsRunning)
             {
                 testWatch.Stop();
                 var cost = (testWatch.ElapsedMilliseconds).ToString();
