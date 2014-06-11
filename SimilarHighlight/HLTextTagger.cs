@@ -44,6 +44,12 @@ namespace SimilarHighlight
         AST = 1
     }
 
+    public enum MoveDirection
+    {
+        PREV = 0,
+        NEXT = 1
+    }
+
     internal class HLTextTagger : ITagger<HLTextTag>, IDisposable
     {
         // the collecton of highlighted elements
@@ -92,10 +98,6 @@ namespace SimilarHighlight
         // the root element of the source code
         private CstNode RootNode { get; set; }
         private bool HasParseException = false;
-        // the token list of the source code
-   //     List<XElement> TokenElements { get; set; }
-        // Whether the shift key is pressed.
-        private bool IsShiftDown = false;
         // Whether the similar elements are needed to fix.
         private bool IsNeedFix { get; set; }
         // the regex wheather need fix
@@ -122,6 +124,11 @@ namespace SimilarHighlight
         private Key[] ArrowKeys = new Key[6] { Key.Up, Key.Down, Key.Left, Key.Right, Key.Home, Key.End, };
         private string TimeCost;       
         private Stopwatch testWatch;
+
+
+        private CodeRange CurrentRange;
+        private CstNode CurrentNode;
+        private string PrevText;
         #endregion
 
         public HLTextTagger(IWpfTextView view, ITextBuffer sourceBuffer, EnvDTE.Document document,
@@ -206,8 +213,8 @@ namespace SimilarHighlight
 
                                 //Hook up to the various events we need to keep the caret margin current.
                                 View.VisualElement.PreviewMouseLeftButtonUp += VisualElement_PreviewMouseLeftButtonUp;
-                                View.VisualElement.PreviewKeyDown += VisualElement_PreviewKeyDown;
                                 View.VisualElement.PreviewKeyUp += VisualElement_PreviewKeyUp;
+                                View.LayoutChanged += OnLayoutChanged;
                                 //Force the margin to be rerendered since things might have changed while the margin was hidden.
                                 View.VisualElement.InvalidateVisual();
                             }
@@ -227,8 +234,8 @@ namespace SimilarHighlight
                                         SourceBuffer.CurrentSnapshot, 0, SourceBuffer.CurrentSnapshot.Length)));
                                 }
                                 View.VisualElement.PreviewMouseLeftButtonUp -= VisualElement_PreviewMouseLeftButtonUp;
-                                View.VisualElement.PreviewKeyDown -= VisualElement_PreviewKeyDown;
                                 View.VisualElement.PreviewKeyUp -= VisualElement_PreviewKeyUp;
+                                View.LayoutChanged -= OnLayoutChanged;
                             }
                         };
                     }
@@ -246,13 +253,23 @@ namespace SimilarHighlight
             }
         }
 
-        private void ViewLayoutChanged(object sender, TextViewLayoutChangedEventArgs e)
+        private void OnLayoutChanged(object sender, TextViewLayoutChangedEventArgs e)
         {
-            // If a new snapshot wasn't generated, then skip this layout
-            if (e.NewViewState.EditSnapshot != e.OldViewState.EditSnapshot)
-            {
-          //      UpdateAtCaretPosition(View.Caret.Position);
+            if (AnyTextChanges(e.OldViewState.EditSnapshot.Version, e.NewViewState.EditSnapshot.Version)) {
+                GetRootNode();
             }
+            //    this.InvalidateVisual();
+        }
+
+        private static bool AnyTextChanges(ITextVersion oldVersion, ITextVersion currentVersion)
+        {
+            while (oldVersion != currentVersion)
+            {
+                if (oldVersion.Changes.Count > 0)
+                    return true;
+                oldVersion = oldVersion.Next;
+            }
+            return false;
         }
 
         public void Dispose()
@@ -283,23 +300,6 @@ namespace SimilarHighlight
             }
         }
 
-        void VisualElement_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            if (OptionPage.Enabled == false) return;
-            RequestSelection = Document.Selection;
-            // When the shift key is pressed, maybe the select operation is going to happens.
-            if ((Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift)
-                || e.Key == Key.LeftShift || e.Key == Key.RightShift) && RequestSelection.Text.Trim() != "")
-            {
-                IsShiftDown = true;
-                GetRootNode();
-                //if (!ArrowKeys.Contains(e.Key)) {
-                //    int a = 1;
-                //}
-                //RequestSelection.
-            }
-        }
-
         void VisualElement_PreviewKeyUp(object sender, KeyEventArgs e)
         {
             
@@ -313,12 +313,12 @@ namespace SimilarHighlight
                 if (e.Key == Key.Left)
                 {
                     // Make the previous similar element highlighted.
-                    MoveSelection("PREV");
+                    MoveSelection(MoveDirection.PREV);
                 }
                 else if (e.Key == Key.Right)
                 {
                     // Make the next similar element highlighted.
-                    MoveSelection("NEXT");
+                    MoveSelection(MoveDirection.NEXT);
                 }
             }
             else if (Keyboard.IsKeyDown(Key.Escape) || e.Key == Key.Escape)
@@ -345,33 +345,36 @@ namespace SimilarHighlight
                     }
                 }
             }
-            else if ((IsShiftDown && !Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift)) ||
-                (e.Key == Key.LeftShift || e.Key == Key.RightShift))
+            else if ((Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+                && RequestSelection.Text.Trim() != "" )
             {
                 // When the select opeartion by keyboard is over.
-      //          RequestSelection = Document.Selection;
-                var tmpTxt = RequestSelection.Text.Trim();
-                if (tmpTxt != "")
+                if (!GetCodeRange(out CurrentRange))
                 {
-                    OutputSelectionLogs(RequestSelection);
+                    return;
+                }
+
+                CurrentNode = CurrentRange.FindOutermostElement(RootNode);
+                PrevText = RequestSelection.Text;
+            }
+            else if ((e.Key == Key.LeftShift || e.Key == Key.RightShift))
+            {
+                var tmpTxt = RequestSelection.Text.Trim();
+                if (tmpTxt != "" || PrevText != "") 
+                {
+                    if (tmpTxt == "")
+                    {
+                        // Do not loose shift key and input a uppercase character. 
+                        OutputSelectionLogsFromCodeRange(CurrentRange, CurrentNode.TokenText.Trim());
+                    }
+                    else
+                    {
+                        OutputSelectionLogs(RequestSelection);
+                    }
                     // Highlight by background thread.
                     ThreadStartHighlighting();
-                    IsShiftDown = false;
                 }
-            } 
-            // If pressed key is not arrow key,  then the current selected text is not exist, to judge it difficult.
-            //else if (IsShiftDown && !ArrowKeys.Contains(e.Key))
-            //{
-            //    // When the select opeartion by keyboard is over.
-            //    var tmpTxt = RequestSelection.Text.Trim();
-            //    if (tmpTxt != "")
-            //    {
-            //        OutputSelectionLogs(RequestSelection);
-            //        // Highlight by background thread.
-            //        ThreadStartHighlighting();
-            //        IsShiftDown = false;
-            //    }
-            //}
+            }
         }
 
         void VisualElement_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -394,6 +397,14 @@ namespace SimilarHighlight
                         MarginElement.SetCurrentPoint(
                             ConvertToPosition(RequestSelection.TopPoint));
                     }
+
+                    if (!GetCodeRange(out CurrentRange))
+                    {
+                        return;
+                    }
+
+                    CurrentNode = CurrentRange.FindOutermostElement(RootNode);
+
                     // Output the selection logs.
                     OutputSelectionLogs(RequestSelection);
                     // Highlight by background thread.
@@ -443,31 +454,11 @@ namespace SimilarHighlight
             
             try
             {
-                if (IsShiftDown)
-                {
-                    // Reset the key state.
-                    IsShiftDown = false;
-                }
-                    
-                // Get the current source code.
-                // Even the shift key is pressed down, the source code maybe edited.
-                GetRootNode();
-                                
-                CodeRange currentRange;
-                // Validation Check about selected range  and get the CodeRange 
-                if (!GetCodeRange(out currentRange))
-                {
-                    return;
-                }
-
-                var currentSelection = RequestSelection;
-                TimeWatch.Start();
-                var currentNode = currentRange.FindOutermostElement(RootNode);
-                TimeWatch.Stop("FindOutermostElement");
-
                 // The selected element is same with before.
-                if (!BuildLocationsFromTwoElements(currentRange, currentNode))
+                if (!BuildLocationsFromTwoElements(CurrentRange, CurrentNode))
                     return;
+
+                PrevText = "";
 
                 if (Locations.Count == 2)
                 {
@@ -505,7 +496,7 @@ namespace SimilarHighlight
                     }
 
                     // Highlight operation.
-                    Highlight(currentSelection, ret);
+                    Highlight(RequestSelection, ret);
                 }
             }
             catch (ThreadAbortException tae)
@@ -559,6 +550,10 @@ namespace SimilarHighlight
             catch (ThreadAbortException tae)
             {
                 OutputMsgForExc("Background thread of highlighting is stopping.[BuildLocationsFromTwoElements method]");
+            }
+            catch (ArgumentException tae)
+            {
+                //  OutputMsgForExc("Background thread of highlighting is stopping.[GetTags method]");
             }
             catch (Exception exc)
             {
@@ -840,6 +835,16 @@ namespace SimilarHighlight
             }
         }
 
+        private void OutputSelectionLogsFromCodeRange(CodeRange currentRange, string text)
+        {
+            if (OutputWindow != null)
+            {
+                OutputMsg("Selection: " + (++SelectionNo) + ", Line: " + currentRange.StartLine + ", Range: (" +
+                                currentRange.StartPosition + ", " + currentRange.EndPosition + "), Code: " +
+                                text);
+            }
+        }
+
         private void OutputSelectionLogs(TextSelection textSelection)
         {
             if (OutputWindow != null)
@@ -852,7 +857,7 @@ namespace SimilarHighlight
 
         private void OutputSimilarElementData(Tuple<int, string, CodeRange> tuple)
         {
-            OutputMsg("Line: " + (tuple.Item3.StartLine + 1) + ", Range: (" + (tuple.Item3.StartPosition + 1) + ", " + (tuple.Item3.EndPosition + 1) + "), " +
+            OutputMsg("Line: " + (tuple.Item3.StartLine) + ", Range: (" + (tuple.Item3.StartPosition + 1) + ", " + (tuple.Item3.EndPosition + 1) + "), " +
                 "Similarity: " + tuple.Item1 + ", Code: " + tuple.Item2);
         }
 
@@ -942,6 +947,10 @@ namespace SimilarHighlight
             {
                 OutputMsgForExc("Background thread of highlighting is stopping.[GetTags method]");
             }
+            catch (ArgumentException tae)
+            {
+              //  OutputMsgForExc("Background thread of highlighting is stopping.[GetTags method]");
+            }
             catch (Exception exc)
             {
                 OutputMsgForExc(exc.ToString());
@@ -967,7 +976,7 @@ namespace SimilarHighlight
             }
         }
 
-        private void MoveSelection(string selectType)
+        private void MoveSelection(MoveDirection moveDir)
         {
             try{
                 bool blEdge = false;
@@ -975,7 +984,7 @@ namespace SimilarHighlight
                 {
                     CurrentSelectNum = TMPCurrentSelectNum;
                 }
-                if (selectType == "NEXT")
+                if (moveDir == MoveDirection.NEXT)
                 {
                     CurrentSelectNum += 1;
                     // When the current selected element is the last one, the NEXT move operation will be ignored.
@@ -985,7 +994,7 @@ namespace SimilarHighlight
                         blEdge = true;
                     }
                 }
-                else if (selectType == "PREV")
+                else if (moveDir == MoveDirection.PREV)
                 {
                     CurrentSelectNum -= 1;
                     // When the current selected element is the first one, the PREV move operation will be ignored.
