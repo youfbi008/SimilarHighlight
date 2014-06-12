@@ -217,6 +217,7 @@ namespace SimilarHighlight
                                 View.LayoutChanged += OnLayoutChanged;
                                 //Force the margin to be rerendered since things might have changed while the margin was hidden.
                                 View.VisualElement.InvalidateVisual();
+                                View.ViewportHeightChanged += View_ViewportHeightChanged;
                             }
                             else
                             {
@@ -253,12 +254,16 @@ namespace SimilarHighlight
             }
         }
 
+        void View_ViewportHeightChanged(object sender, EventArgs e)
+        {
+            MarginElement.RedrawSimilarMargin();
+        }
+
         private void OnLayoutChanged(object sender, TextViewLayoutChangedEventArgs e)
         {
             if (AnyTextChanges(e.OldViewState.EditSnapshot.Version, e.NewViewState.EditSnapshot.Version)) {
                 GetRootNode();
             }
-            //    this.InvalidateVisual();
         }
 
         private static bool AnyTextChanges(ITextVersion oldVersion, ITextVersion currentVersion)
