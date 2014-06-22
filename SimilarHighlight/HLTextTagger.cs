@@ -403,13 +403,19 @@ namespace SimilarHighlight
                             ConvertToPosition(RequestSelection.TopPoint));
                     }
 
-                    if (!GetCodeRange(out CurrentRange))
+                    try
                     {
-                        return;
+                        if (!GetCodeRange(out CurrentRange))
+                        {
+                            return;
+                        }
+
+                        CurrentNode = CurrentRange.FindOutermostElement(RootNode);
                     }
-
-                    CurrentNode = CurrentRange.FindOutermostElement(RootNode);
-
+                    catch (Exception exc)
+                    {
+                        OutputMsgForExc(exc.ToString());
+                    }
                     // Output the selection logs.
                     OutputSelectionLogs(RequestSelection);
                     // Highlight by background thread.

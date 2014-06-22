@@ -30,7 +30,7 @@ namespace TestForSimilarHighlight
             };
 
             string[] strNum = new string[] { 
-                "one", "two", "three","four", "five", "six","seven", "eight", "nine",
+                "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
             };
             int intOne = 1;
             int intTwo = 2;
@@ -151,6 +151,39 @@ namespace TestForSimilarHighlight
             Console.WriteLine("12345");
             Console.WriteLine("abcde");
             Console.WriteLine("ABCDE");
+            int intSelector = 1;
+
+            switch (intSelector)
+            {
+                case 111:
+                    Console.WriteLine("one");
+                    break;
+                case 222:
+                    Console.WriteLine("two");
+                    break;
+                case 333:
+                    Console.WriteLine("three");
+                    break;
+                case 444:
+                    Console.WriteLine("four");
+                    break;
+            }
+
+            switch (intSelector)
+            {
+                case 222:
+                    Console.WriteLine("two");
+                    break;
+                case 333:
+                    Console.WriteLine("three");
+                    break;
+                case 444:
+                    Console.WriteLine("four");
+                    break;
+                case 555:
+                    Console.WriteLine("five");
+                    break;
+            }
         }
     }
 }
