@@ -74,6 +74,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CstTest.cs" />
+    <Compile Include="HLTextTest.cs" />
     <Compile Include="InferenceTest.cs" />
     <Compile Include="Line1000.cs" />
     <Compile Include="Line500.cs" />

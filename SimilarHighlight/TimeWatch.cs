@@ -30,8 +30,8 @@ namespace SimilarHighlight
         public static void Stop(string strObjName = "") {
             if (watch.IsRunning) {
                 watch.Stop();
-
-                Debug.WriteLine(strObjName + "  (total cost " + (watch.ElapsedMilliseconds).ToString() + " seconds)");
+           //     HLTextTagger.OutputMsg(strObjName + ": total cost " + (watch.ElapsedMilliseconds).ToString() + " ms");
+                Debug.WriteLine(strObjName + ": total cost " + (watch.ElapsedMilliseconds).ToString() + " ms");
             }
         }
     }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Linq;
@@ -13,21 +14,19 @@ using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Operations;
 using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Utilities;
-using Code2Xml.Core;
-using Code2Xml.Core.Location;
 using System.IO;
 using System.Diagnostics;
 using System.Xml.Linq;
 using System.Xml;
-using Code2Xml.Languages.ANTLRv3.Processors.CSharp;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Code2Xml.Core;
+using Code2Xml.Core.Location;
 using Code2Xml.Languages.ANTLRv3.Processors.Java;
-using System.Collections;
+using Code2Xml.Languages.ANTLRv3.Processors.CSharp;
 using Code2Xml.Core.Generators;
 using SimilarHighlight.OutputWindow;
 using SimilarHighlight.ContainerMargin;
-using System.Windows.Threading;
 using SimilarHighlight.Option;
 
 namespace SimilarHighlight
@@ -48,6 +47,12 @@ namespace SimilarHighlight
     {
         PREV = 0,
         NEXT = 1
+    }
+
+    public enum SelectMethod
+    {
+        Mouse = 0,
+        Keyboard = 1
     }
 
     internal class HLTextTagger : ITagger<HLTextTag>, IDisposable
@@ -97,6 +102,12 @@ namespace SimilarHighlight
         private string SourceCode { get; set; }
         // the root element of the source code
         private CstNode RootNode { get; set; }
+        // the previous root element(before source code changed)
+        private CstNode PreRootNode { get; set; }
+        // Save the previous selected range.
+        private CodeRange PreRange;
+        private CodeRange CurrentRange;
+        private CstNode CurrentNode;
         private bool HasParseException = false;
         // Whether the similar elements are needed to fix.
         private bool IsNeedFix { get; set; }
@@ -125,9 +136,7 @@ namespace SimilarHighlight
         private string TimeCost;       
         private Stopwatch testWatch;
 
-
-        private CodeRange CurrentRange;
-        private CstNode CurrentNode;
+        
         private string PrevText;
         #endregion
 
@@ -353,13 +362,15 @@ namespace SimilarHighlight
             else if ((Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
                 && RequestSelection.Text.Trim() != "" )
             {
+                if(CurrentRange != null) {
+                    PreRange = CurrentRange;
+                    PreRootNode = RootNode;
+                }
                 // When the select opeartion by keyboard is over.
                 if (!GetCodeRange(out CurrentRange))
                 {
                     return;
                 }
-
-                CurrentNode = CurrentRange.FindOutermostElement(RootNode);
                 PrevText = RequestSelection.Text;
             }
             else if ((e.Key == Key.LeftShift || e.Key == Key.RightShift))
@@ -367,17 +378,12 @@ namespace SimilarHighlight
                 var tmpTxt = RequestSelection.Text.Trim();
                 if (tmpTxt != "" || PrevText != "") 
                 {
-                    if (tmpTxt == "")
+                    if (Locations.Where(ln => ln.CodeRange == CurrentRange).Count() > 0)
                     {
-                        // Do not loose shift key and input a uppercase character. 
-                        OutputSelectionLogsFromCodeRange(CurrentRange, CurrentNode.TokenText.Trim());
-                    }
-                    else
-                    {
-                        OutputSelectionLogs(RequestSelection);
+                        return;
                     }
                     // Highlight by background thread.
-                    ThreadStartHighlighting();
+                   ThreadStartHighlighting(SelectMethod.Keyboard);
                 }
             }
         }
@@ -403,23 +409,8 @@ namespace SimilarHighlight
                             ConvertToPosition(RequestSelection.TopPoint));
                     }
 
-                    try
-                    {
-                        if (!GetCodeRange(out CurrentRange))
-                        {
-                            return;
-                        }
-
-                        CurrentNode = CurrentRange.FindOutermostElement(RootNode);
-                    }
-                    catch (Exception exc)
-                    {
-                        OutputMsgForExc(exc.ToString());
-                    }
-                    // Output the selection logs.
-                    OutputSelectionLogs(RequestSelection);
                     // Highlight by background thread.
-                    ThreadStartHighlighting();
+                    ThreadStartHighlighting(SelectMethod.Mouse);
                 }
             }
         }
@@ -461,10 +452,43 @@ namespace SimilarHighlight
             }
         }
 
-        void HighlightSimilarElements() {
+        void HighlightSimilarElements(SelectMethod selectMethod)
+        {
             
             try
             {
+                if (selectMethod == SelectMethod.Mouse)
+                {
+                    if (!GetCodeRange(out CurrentRange))
+                    {
+                        return;
+                    }
+                    TimeWatch.Start();
+                    
+                    // Output the selection logs.
+                    OutputSelectionLogs(RequestSelection);
+                    CurrentNode = CurrentRange.FindOutermostElement(RootNode);
+                    TimeWatch.Stop("FindOutermostElement");
+                }
+                else if (selectMethod == SelectMethod.Keyboard)
+                {
+
+                    if (RequestSelection.Text.Trim() == "")
+                    {
+                        // When the selected text was changed by a new char from user's typing.
+                        CurrentRange = PreRange;
+                        CurrentNode = CurrentRange.FindOutermostElement(PreRootNode);
+                        
+                        // Do not loose shift key and input a uppercase character. 
+                        OutputSelectionLogsFromCodeRange(CurrentRange, PrevText);
+                    }
+                    else
+                    {
+                        CurrentNode = CurrentRange.FindOutermostElement(RootNode);
+                        OutputSelectionLogs(RequestSelection);
+                    }
+                }
+
                 // The selected element is same with before.
                 if (!BuildLocationsFromTwoElements(CurrentRange, CurrentNode))
                     return;
@@ -512,7 +536,8 @@ namespace SimilarHighlight
             }
             catch (ThreadAbortException tae)
             {
-                OutputMsgForExc("Background thread of highlighting is stopping.[HighlightSimilarElements method]");
+                OutputMsgForExc(tae.ToString());
+            //    OutputMsgForExc("Background thread of highlighting is stopping.[HighlightSimilarElements method]");
             }
             catch (NullReferenceException nre)
             {
@@ -1042,7 +1067,7 @@ namespace SimilarHighlight
             }
         }
 
-        void ThreadStartHighlighting(bool isBackground = true)
+        void ThreadStartHighlighting(SelectMethod selectMethod, bool isBackground = true)
         {
             try
             {
@@ -1050,14 +1075,21 @@ namespace SimilarHighlight
                 {
                      try
                      {
-                        if (this.listenThread != null && this.listenThread.IsAlive)
+                         if (this.listenThread != null && this.listenThread.IsAlive)
+                         {
+                             System.Threading.Thread.Sleep(300);
+                             //this.listenThread.Abort();
+                             //while (listenThread.IsAlive) ;
+                         }
+                        
+                        ThreadPool.QueueUserWorkItem(delegate(object state)
                         {
-                            this.listenThread.Abort();
-                        }
-                        this.listenThread = new System.Threading.Thread(this.HighlightSimilarElements);
-                        this.listenThread.IsBackground = true;
-                        this.listenThread.Priority = ThreadPriority.Highest;
-                        this.listenThread.Start();
+                            ThreadStart starter = delegate { HighlightSimilarElements(selectMethod); };
+                            this.listenThread = new System.Threading.Thread(starter);
+                            this.listenThread.IsBackground = true;
+                            this.listenThread.Priority = ThreadPriority.Highest;
+                            this.listenThread.Start();
+                        });
                      }
                      catch (ThreadAbortException tae)
                      {
@@ -1066,7 +1098,7 @@ namespace SimilarHighlight
                 }
                 else
                 {
-                    HighlightSimilarElements();
+                    HighlightSimilarElements(selectMethod);
                 }
             }
             catch (Exception exc)
