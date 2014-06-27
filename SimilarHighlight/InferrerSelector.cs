@@ -17,19 +17,19 @@ namespace SimilarHighlight
     public static class InferrerSelector
     {
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, CstNode rootNode, TreeType treeType, ref ISet<string> nodeNames)
+                IEnumerable<LocationInfo> locations, CstNode rootNode, TreeType treeType, string candidateNodeType)
         {
             try
             {
                 if (treeType == TreeType.CST)
                 {
                     return CstInferrer.GetSimilarElements(locations,
-                            rootNode, ref nodeNames);
+                            rootNode, candidateNodeType);
                 }
                 else if (treeType == TreeType.AST)
                 {   // TODO: The class will be fix in future.
                     return AstInferrer.GetSimilarElements(locations,
-                            rootNode, ref nodeNames);
+                            rootNode, candidateNodeType);
                 }
             }
             catch (ThreadAbortException tae)

@@ -10,23 +10,10 @@ namespace TestForSimilarHighlight
         int global_int_A { get; set; }
         string global_string_B { get; set; }
 
-        // Build a line of Multiplication table
-        void GetMultiply(int num, string strNum) {
-
-            for (int i = 1; i <= num; i++)
-            {
-                // [Sample]Number two:2*1=2 2*2=4
-                Console.Write("Number " + strNum + ":" + 
-                    num + "*" + i + "=" + (num * i) + "\t");
-            }
-            Console.Write("\n");
-        }
-
-        // This is a very complex method to build a Multiplication table.
         void GetMultiplicationTable()
         {
             int[] nums = new int[] {
-                1, 2, 3,   1, 2, 3,   1, 2, 3, 
+                1, 2, 3,   4, 5, 6,   7, 8, 9, 
             };
 
             string[] strNum = new string[] { 
@@ -48,7 +35,6 @@ namespace TestForSimilarHighlight
             // The beginning of the experiment 1.
             switch(intSelector)
             {
-
                 case 111:
                     this.GetMultiply(intOne, strNum[intTwo]);
                     Console.WriteLine("one 1");
@@ -91,7 +77,7 @@ namespace TestForSimilarHighlight
                     break;
             }
 
-            // The ending of the experiment 1.
+            // The expected result of the experiment 1.
             switch (intSelector)
             {
 
@@ -138,52 +124,17 @@ namespace TestForSimilarHighlight
             }
         }
 
-        void function_B(int a, int b)
+        // Build a line of Multiplication table
+        void GetMultiply(int num, string strNum)
         {
-            int local_int_C = DateTime.Now.Year;
-            string local_String_D = DateTime.Now.ToLongTimeString();
-            this.global_string_B = "HELLO WORLD";
-            local_String_D = this.global_string_B.ToString();
-        }
 
-        void function_C()
-        {
-            Console.WriteLine("12345");
-            Console.WriteLine("abcde");
-            Console.WriteLine("ABCDE");
-            int intSelector = 1;
-
-            switch (intSelector)
+            for (int i = 1; i <= num; i++)
             {
-                case 111:
-                    Console.WriteLine("one");
-                    break;
-                case 222:
-                    Console.WriteLine("two");
-                    break;
-                case 333:
-                    Console.WriteLine("three");
-                    break;
-                case 444:
-                    Console.WriteLine("four");
-                    break;
+                // [Sample]Number two:2*1=2 2*2=4
+                Console.Write("Number " + strNum + ":" +
+                    num + "*" + i + "=" + (num * i) + "\t");
             }
-
-            switch (intSelector)
-            {
-                case 222:
-                    Console.WriteLine("two");
-                    break;
-                case 333:
-                    Console.WriteLine("three");
-                    break;
-                case 444:
-                    Console.WriteLine("four");
-                    break;
-                case 555:
-                    Console.WriteLine("five");
-                    break;
-            }
+            Console.Write("\n");
         }
     }
 }

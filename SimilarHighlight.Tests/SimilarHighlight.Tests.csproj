@@ -82,6 +82,7 @@
     <Compile Include="Line5000.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimilarityTest1.cs" />
+    <Compile Include="SimilarityTest12.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config">

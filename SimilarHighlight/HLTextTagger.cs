@@ -128,7 +128,7 @@ namespace SimilarHighlight
         private int SelectionNo { get; set; }
         private int highlightNo { get; set; }
 
-        private ISet<string> nodeNames;
+        private string candidateNodeType;
         private bool m_disposed;
         public static List<Tuple<int, string, CodeRange>> OutputDatas = new List<Tuple<int, string, CodeRange>>();
         private SimilarMarginElement MarginElement { get; set; }
@@ -203,7 +203,6 @@ namespace SimilarHighlight
                         this.WordSpans = new NormalizedSnapshotSpanCollection();
                         this.TmpWordSpans = new NormalizedSnapshotSpanCollection();
                         this.CurrentWord = null;
-                        this.nodeNames = new HashSet<string>();
                         OutputWindow = outputWindow;
                         OptionPage = optionPage;
                         View = view;
@@ -497,25 +496,30 @@ namespace SimilarHighlight
 
                 if (Locations.Count == 2)
                 {
-                    // Get the similar Elements.
-                    var ret = InferrerSelector.GetSimilarElements(Locations,
-                            RootNode, treeType, ref nodeNames);
-
+                    IEnumerable<Tuple<int, CodeRange>> ret = null;
+                    if (Locations[0].CstNode.Name == Locations[1].CstNode.Name)
+                    {
+                        candidateNodeType = Locations[0].CstNode.Name;
+                        // Get the similar Elements.
+                        ret = InferrerSelector.GetSimilarElements(Locations,
+                                RootNode, treeType, candidateNodeType);
+                    }
                     PaneLineCnt = RequestSelection.TextPane.Height;
                     TimeWatch.Start();
                     // If no similar element is found then nothing will be highlighted.
-                    if (ret.Count() == 0 || ret.First().Item1 == 0)
+                    if (ret == null)
                     {
                         HaveSimilarElements = false;
                         // The element selected before current two element will be added to compare.
-                        if (PreLocationInfo.CstNode != null)
+                        if (PreLocationInfo.CstNode != null && PreLocationInfo.CstNode.Name == Locations[1].CstNode.Name)
                         {
                             var tmpLocationInfo = Locations[0];
                             Locations[0] = PreLocationInfo;
 
+                            candidateNodeType = Locations[0].CstNode.Name;
                             // Get the similar Elements.
                             ret = InferrerSelector.GetSimilarElements(Locations,
-                                    RootNode, treeType, ref nodeNames);
+                                    RootNode, treeType, candidateNodeType);
                             
                             // If no similar element is found then nothing will be highlighted.
                             if (ret.Count() == 0 || ret.First().Item1 == 0)
@@ -608,7 +612,7 @@ namespace SimilarHighlight
                 var currentStart = CurrentWordForCheck.Start;
                 var currentEnd = CurrentWordForCheck.End;
 
-                if (Locations[0].IsNeedFix || Locations[1].IsNeedFix || nodeNames.Contains("element_initializer"))
+                if (Locations[0].IsNeedFix || Locations[1].IsNeedFix || candidateNodeType == "element_initializer")
                 {
                     FixKit = Tuple.Create(RegexNeedFix,
                                         Tuple.Create(startOffset, endOffset));

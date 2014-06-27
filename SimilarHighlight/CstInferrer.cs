@@ -155,7 +155,7 @@ namespace SimilarHighlight
         {
             var name2Count = new Dictionary<string, int>();
             var candidates = outermosts.AsParallel().SelectMany(
-                    e => e.DescendantsOfSingleAndSelf());
+                    e => e.DescendantsOfSingleAndSelf()).ToList();
             foreach (var e in candidates)
             {
                 var count = name2Count.GetValueOrDefault(e.Name);
@@ -169,7 +169,7 @@ namespace SimilarHighlight
         }
 
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, CstNode rootNode, ref ISet<string> nodeNames,
+                IEnumerable<LocationInfo> locations, CstNode rootNode, string candidateNodeType,
                 int range = 5, bool inner = true, bool outer = true)
         {
             try
@@ -183,9 +183,10 @@ namespace SimilarHighlight
                 }
 
                 // Determine the node names to extract candidate nodes from the CSTs
-                nodeNames = AdoptNodeNames(elements);
+            //    nodeNames = AdoptNodeNames(elements);
 
-                var names = nodeNames;
+
+            //    var names = nodeNames;
                 // Extract candidate nodes that has one of the determined names
                 var candidates = new List<IEnumerable<CstNode>>();
 
@@ -193,7 +194,7 @@ namespace SimilarHighlight
 
                 candidates.Add(
                         rootNode.Descendants().AsParallel()
-                                .Where(e => names.Contains(e.Name)).ToList());
+                                .Where(e => candidateNodeType == e.Name).ToList());
 
                 // Extract common surrounding nodes from the selected elements.
                 var commonKeys = elements.GetCommonKeys(range, true, true);
@@ -204,14 +205,15 @@ namespace SimilarHighlight
                 //}
                 TimeWatch.Stop("FindOutCandidateElements");
 
-                var minSimilarity = GetMinSimilarity((double)commonKeys.Count, names);
+                var minSimilarity = GetMinSimilarity((double)commonKeys.Count, candidateNodeType);
 
                 TimeWatch.Start();
 
                 // Get the similar nodes collection. 
                 var ret = candidates.GetSimilars(commonKeys, minSimilarity);
 
-                if (names.Contains("element_initializer")) {
+                if (candidateNodeType == "element_initializer")
+                {
                     var retArray = candidates.GetOtherSimilars(commonKeys);
                     var retOthers = new List<Tuple<int, CodeRange>>();
                     // To extract the current Array by comparaison siblings of the first node in each array with selected elements.
@@ -304,7 +306,7 @@ namespace SimilarHighlight
                         .ToList();//
         }
 
-        private static double GetMinSimilarity(double commonCount, ISet<string> names)
+        private static double GetMinSimilarity(double commonCount, string candidateNodeType)
         {
             double minSimilarity = 0;
             if (commonCount <= 5)
@@ -330,7 +332,7 @@ namespace SimilarHighlight
                         minSimilarity = commonCount - 1;
                     }
                     else {
-                        if (names.Contains("element_initializer"))
+                        if (candidateNodeType == "element_initializer")
                         {
                             minSimilarity = commonCount * (double)Option.OptionPage.SimilarityType.Low / 10;
                         }

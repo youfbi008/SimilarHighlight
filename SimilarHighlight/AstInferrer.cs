@@ -194,7 +194,7 @@ namespace SimilarHighlight
         }
 
         public static IEnumerable<Tuple<int, CodeRange>> GetSimilarElements(
-                IEnumerable<LocationInfo> locations, CstNode rootNode, ref ISet<string> nodeNames,
+                IEnumerable<LocationInfo> locations, CstNode rootNode, string candidateNodeType,
                 int range = 5, bool inner = true, bool outer = true)
         {
             //try
