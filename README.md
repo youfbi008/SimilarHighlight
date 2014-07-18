@@ -9,8 +9,8 @@ SimilarHighlight is a simple extension by the Managed Extensibility Framework.
 2.The previous or next similar element can be found by shortcut keys quickly, and the whole text of it will be selected to modify easily.  
 
 The optional functions:  
-3.A margin will be added on the right side of the editor, offer relative position marks about similar elements.
-Then you can change the current selected element by selecting marks in the margin.  
+3.A marker bar will be added on the right side of the editor, offer relative position marks about similar elements.
+Then you can change the current selected element by selecting marks in the marker bar.  
 4.A pane named "Similar" will be added into the output window, offer more information about similar elements.  
 5.In `Tools -> Options -> SimilarHighlight`, you can change some settings or disable some functions.
 And in `Fonts and Color -> SimilarHighlight`, you can change the highlighting colors".
